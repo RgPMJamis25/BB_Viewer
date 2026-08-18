@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NAP, DP & Cabinet Utilization Map - Cagayan de Oro City</title>
+    <title>NAP, DP & Cabinet Utilization Map - Geospatial Deck</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -82,6 +82,12 @@
         </div>
 
         <div class="flex items-center gap-3 text-xs font-semibold">
+            <!-- Insights Modal Launch Button -->
+            <button onclick="openInsightsModal()" class="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-lg transition shadow-md flex items-center gap-1.5 border border-blue-400/30">
+                <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+                <span>Insights & Tech Util</span>
+            </button>
+
             <!-- Header Layer Toggles -->
             <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                 <label class="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold">
@@ -121,6 +127,108 @@
     <div class="flex-1 flex overflow-hidden relative">
         <aside id="sidebar-deck" class="w-80 sm:w-96 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col z-20 shrink-0 transition-all duration-300 custom-scrollbar overflow-y-auto">
             <div class="p-4 space-y-5">
+                <!-- Map Filters Block -->
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                            <i data-lucide="filter" class="w-4 h-4 text-blue-500"></i> Map Location & Tech Filters
+                        </div>
+                        <button onclick="resetFilters('map')" class="text-[10px] text-blue-400 hover:underline font-bold">Reset Map Filters</button>
+                    </div>
+
+                    <div class="space-y-2.5 text-xs">
+                        <div>
+                            <label class="block font-semibold mb-1 text-slate-300">Technology (Tech)</label>
+                            <div class="relative" id="map-dd-container-tech">
+                                <button type="button" onclick="toggleDropdown('map', 'tech')" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-left flex justify-between items-center text-slate-200">
+                                    <span id="map-dd-label-tech" class="truncate">All Technologies</span>
+                                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400"></i>
+                                </button>
+                                <div id="map-dd-menu-tech" class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 p-2 space-y-1">
+                                    <div class="flex items-center justify-between pb-1 border-b border-slate-800 text-[10px] text-blue-400">
+                                        <button onclick="selectAllInDropdown('map', 'tech')" class="hover:underline font-bold">Select All</button>
+                                        <button onclick="clearAllInDropdown('map', 'tech')" class="hover:underline font-bold text-slate-400">Clear All</button>
+                                    </div>
+                                    <input type="text" placeholder="Search technology..." oninput="filterDropdownOptions('map', 'tech', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 outline-none focus:border-blue-500">
+                                    <div id="map-dd-options-tech" class="space-y-1 max-h-40 custom-scrollbar overflow-y-auto"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold mb-1 text-slate-300">Province (PROVINCE_NAME)</label>
+                            <div class="relative" id="map-dd-container-province">
+                                <button type="button" onclick="toggleDropdown('map', 'province')" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-left flex justify-between items-center text-slate-200">
+                                    <span id="map-dd-label-province" class="truncate">All Provinces</span>
+                                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400"></i>
+                                </button>
+                                <div id="map-dd-menu-province" class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 p-2 space-y-1">
+                                    <div class="flex items-center justify-between pb-1 border-b border-slate-800 text-[10px] text-blue-400">
+                                        <button onclick="selectAllInDropdown('map', 'province')" class="hover:underline font-bold">Select All</button>
+                                        <button onclick="clearAllInDropdown('map', 'province')" class="hover:underline font-bold text-slate-400">Clear All</button>
+                                    </div>
+                                    <input type="text" placeholder="Search province..." oninput="filterDropdownOptions('map', 'province', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 outline-none focus:border-blue-500">
+                                    <div id="map-dd-options-province" class="space-y-1 max-h-40 custom-scrollbar overflow-y-auto"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold mb-1 text-slate-300">Town / City (CITY_NAME)</label>
+                            <div class="relative" id="map-dd-container-town">
+                                <button type="button" onclick="toggleDropdown('map', 'town')" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-left flex justify-between items-center text-slate-200">
+                                    <span id="map-dd-label-town" class="truncate">All Towns</span>
+                                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400"></i>
+                                </button>
+                                <div id="map-dd-menu-town" class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 p-2 space-y-1">
+                                    <div class="flex items-center justify-between pb-1 border-b border-slate-800 text-[10px] text-blue-400">
+                                        <button onclick="selectAllInDropdown('map', 'town')" class="hover:underline font-bold">Select All</button>
+                                        <button onclick="clearAllInDropdown('map', 'town')" class="hover:underline font-bold text-slate-400">Clear All</button>
+                                    </div>
+                                    <input type="text" placeholder="Search town..." oninput="filterDropdownOptions('map', 'town', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 outline-none focus:border-blue-500">
+                                    <div id="map-dd-options-town" class="space-y-1 max-h-40 custom-scrollbar overflow-y-auto"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold mb-1 text-slate-300">Barangay (BRGY_NAME)</label>
+                            <div class="relative" id="map-dd-container-brgy">
+                                <button type="button" onclick="toggleDropdown('map', 'brgy')" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-left flex justify-between items-center text-slate-200">
+                                    <span id="map-dd-label-brgy" class="truncate">All Barangays</span>
+                                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400"></i>
+                                </button>
+                                <div id="map-dd-menu-brgy" class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 p-2 space-y-1">
+                                    <div class="flex items-center justify-between pb-1 border-b border-slate-800 text-[10px] text-blue-400">
+                                        <button onclick="selectAllInDropdown('map', 'brgy')" class="hover:underline font-bold">Select All</button>
+                                        <button onclick="clearAllInDropdown('map', 'brgy')" class="hover:underline font-bold text-slate-400">Clear All</button>
+                                    </div>
+                                    <input type="text" placeholder="Search barangay..." oninput="filterDropdownOptions('map', 'brgy', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 outline-none focus:border-blue-500">
+                                    <div id="map-dd-options-brgy" class="space-y-1 max-h-40 custom-scrollbar overflow-y-auto"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold mb-1 text-slate-300">Sales Area (SALES_AREA)</label>
+                            <div class="relative" id="map-dd-container-sales">
+                                <button type="button" onclick="toggleDropdown('map', 'sales')" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-left flex justify-between items-center text-slate-200">
+                                    <span id="map-dd-label-sales" class="truncate">All Sales Areas</span>
+                                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400"></i>
+                                </button>
+                                <div id="map-dd-menu-sales" class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 p-2 space-y-1">
+                                    <div class="flex items-center justify-between pb-1 border-b border-slate-800 text-[10px] text-blue-400">
+                                        <button onclick="selectAllInDropdown('map', 'sales')" class="hover:underline font-bold">Select All</button>
+                                        <button onclick="clearAllInDropdown('map', 'sales')" class="hover:underline font-bold text-slate-400">Clear All</button>
+                                    </div>
+                                    <input type="text" placeholder="Search sales area..." oninput="filterDropdownOptions('map', 'sales', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 outline-none focus:border-blue-500">
+                                    <div id="map-dd-options-sales" class="space-y-1 max-h-40 custom-scrollbar overflow-y-auto"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="space-y-3">
                     <div class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                         <i data-lucide="eye" class="w-4 h-4 text-emerald-500"></i> Layer Visibility Toggles
@@ -173,6 +281,156 @@
         </main>
     </div>
 
+    <!-- Insights Modal -->
+    <div id="insights-modal" class="hidden fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col h-[90vh] overflow-hidden">
+            <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950 shrink-0">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="bar-chart-2" class="w-5 h-5 text-blue-400"></i>
+                    <div>
+                        <h2 class="text-base font-bold text-white">Insights & Utilization per Technology</h2>
+                        <p class="text-[11px] text-slate-400">Independent filtering scope for tech metrics</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="copyMapFiltersToModal()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-xs text-blue-400 font-semibold rounded-lg border border-slate-700 transition flex items-center gap-1">
+                        <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy Map Filters
+                    </button>
+                    <button onclick="closeInsightsModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Insights Modal Independent Filter Bar -->
+            <div class="p-3 bg-slate-950 border-b border-slate-800 shrink-0 space-y-2">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i data-lucide="sliders" class="w-3.5 h-3.5 text-indigo-400"></i> Insights Specific Filters
+                    </span>
+                    <button onclick="resetFilters('modal')" class="text-[10px] text-indigo-400 hover:underline font-bold">Reset Modal Filters</button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-xs">
+                    <div>
+                        <div class="relative" id="modal-dd-container-tech">
+                            <button type="button" onclick="toggleDropdown('modal', 'tech')" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-left flex justify-between items-center text-slate-200">
+                                <span id="modal-dd-label-tech" class="truncate text-[11px]">All Techs</span>
+                                <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400"></i>
+                            </button>
+                            <div id="modal-dd-menu-tech" class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 p-2 space-y-1">
+                                <div class="flex items-center justify-between pb-1 border-b border-slate-800 text-[10px] text-indigo-400">
+                                    <button onclick="selectAllInDropdown('modal', 'tech')" class="hover:underline font-bold">Select All</button>
+                                    <button onclick="clearAllInDropdown('modal', 'tech')" class="hover:underline font-bold text-slate-400">Clear All</button>
+                                </div>
+                                <input type="text" placeholder="Search technology..." oninput="filterDropdownOptions('modal', 'tech', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 outline-none focus:border-indigo-500">
+                                <div id="modal-dd-options-tech" class="space-y-1 max-h-40 custom-scrollbar overflow-y-auto"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="relative" id="modal-dd-container-province">
+                            <button type="button" onclick="toggleDropdown('modal', 'province')" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-left flex justify-between items-center text-slate-200">
+                                <span id="modal-dd-label-province" class="truncate text-[11px]">All Provinces</span>
+                                <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400"></i>
+                            </button>
+                            <div id="modal-dd-menu-province" class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 p-2 space-y-1">
+                                <div class="flex items-center justify-between pb-1 border-b border-slate-800 text-[10px] text-indigo-400">
+                                    <button onclick="selectAllInDropdown('modal', 'province')" class="hover:underline font-bold">Select All</button>
+                                    <button onclick="clearAllInDropdown('modal', 'province')" class="hover:underline font-bold text-slate-400">Clear All</button>
+                                </div>
+                                <input type="text" placeholder="Search province..." oninput="filterDropdownOptions('modal', 'province', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 outline-none focus:border-indigo-500">
+                                <div id="modal-dd-options-province" class="space-y-1 max-h-40 custom-scrollbar overflow-y-auto"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="relative" id="modal-dd-container-town">
+                            <button type="button" onclick="toggleDropdown('modal', 'town')" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-left flex justify-between items-center text-slate-200">
+                                <span id="modal-dd-label-town" class="truncate text-[11px]">All Towns</span>
+                                <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400"></i>
+                            </button>
+                            <div id="modal-dd-menu-town" class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 p-2 space-y-1">
+                                <div class="flex items-center justify-between pb-1 border-b border-slate-800 text-[10px] text-indigo-400">
+                                    <button onclick="selectAllInDropdown('modal', 'town')" class="hover:underline font-bold">Select All</button>
+                                    <button onclick="clearAllInDropdown('modal', 'town')" class="hover:underline font-bold text-slate-400">Clear All</button>
+                                </div>
+                                <input type="text" placeholder="Search town..." oninput="filterDropdownOptions('modal', 'town', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 outline-none focus:border-indigo-500">
+                                <div id="modal-dd-options-town" class="space-y-1 max-h-40 custom-scrollbar overflow-y-auto"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="relative" id="modal-dd-container-brgy">
+                            <button type="button" onclick="toggleDropdown('modal', 'brgy')" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-left flex justify-between items-center text-slate-200">
+                                <span id="modal-dd-label-brgy" class="truncate text-[11px]">All Barangays</span>
+                                <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400"></i>
+                            </button>
+                            <div id="modal-dd-menu-brgy" class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 p-2 space-y-1">
+                                <div class="flex items-center justify-between pb-1 border-b border-slate-800 text-[10px] text-indigo-400">
+                                    <button onclick="selectAllInDropdown('modal', 'brgy')" class="hover:underline font-bold">Select All</button>
+                                    <button onclick="clearAllInDropdown('modal', 'brgy')" class="hover:underline font-bold text-slate-400">Clear All</button>
+                                </div>
+                                <input type="text" placeholder="Search barangay..." oninput="filterDropdownOptions('modal', 'brgy', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 outline-none focus:border-indigo-500">
+                                <div id="modal-dd-options-brgy" class="space-y-1 max-h-40 custom-scrollbar overflow-y-auto"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="relative" id="modal-dd-container-sales">
+                            <button type="button" onclick="toggleDropdown('modal', 'sales')" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-left flex justify-between items-center text-slate-200">
+                                <span id="modal-dd-label-sales" class="truncate text-[11px]">All Sales Areas</span>
+                                <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400"></i>
+                            </button>
+                            <div id="modal-dd-menu-sales" class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 p-2 space-y-1">
+                                <div class="flex items-center justify-between pb-1 border-b border-slate-800 text-[10px] text-indigo-400">
+                                    <button onclick="selectAllInDropdown('modal', 'sales')" class="hover:underline font-bold">Select All</button>
+                                    <button onclick="clearAllInDropdown('modal', 'sales')" class="hover:underline font-bold text-slate-400">Clear All</button>
+                                </div>
+                                <input type="text" placeholder="Search sales area..." oninput="filterDropdownOptions('modal', 'sales', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100 outline-none focus:border-indigo-500">
+                                <div id="modal-dd-options-sales" class="space-y-1 max-h-40 custom-scrollbar overflow-y-auto"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-3 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between text-xs text-slate-400 shrink-0">
+                <span>Active Scope: <strong id="modal-filter-context" class="text-amber-400">All Locations</strong></span>
+                <span id="modal-total-dps" class="font-mono text-blue-400 font-bold">0 Records Matched</span>
+            </div>
+
+            <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+                <!-- Global Tech Overview Cards -->
+                <div id="tech-summary-cards" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+
+                <!-- Technology Detailed Utilization Table -->
+                <div class="space-y-3">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Technology Detail Matrix</h3>
+                    <div class="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="bg-slate-950 text-slate-400 uppercase font-semibold border-b border-slate-800 text-[10px]">
+                                <tr>
+                                    <th class="p-3">Technology</th>
+                                    <th class="p-3 text-right">Records Count</th>
+                                    <th class="p-3 text-right">Working Lines</th>
+                                    <th class="p-3 text-right">Total Capacity</th>
+                                    <th class="p-3 text-right">Avail Ports</th>
+                                    <th class="p-3 text-center">Utilization %</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tech-matrix-tbody" class="divide-y divide-slate-800/60"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const SHEET_1_URL = 'https://script.google.com/macros/s/AKfycbz8I-Fw3exKkvDcX_sLFQ9YH5aj4HvCZtjw_mLr3kAwVBguTMlSdItjOgbeIulVbA1dlw/exec?sheet=DP%2CNAP%20Utilization';
         const SHEET_2_URL = 'https://script.google.com/macros/s/AKfycbz8I-Fw3exKkvDcX_sLFQ9YH5aj4HvCZtjw_mLr3kAwVBguTMlSdItjOgbeIulVbA1dlw/exec?sheet=Corp_SG_DP%2CNAP%20Utilization';
@@ -183,11 +441,12 @@
 
         let map = null;
         let activeTileLayer = null;
-        let svgRenderer = null;
+        let canvasRenderer = null;
         let dpLayerGroup = null;
         let cabinetLayerGroup = null;
         let auraLayerGroup = null;
 
+        let rawCombinedRows = [];
         let dpRegistry = {};
         let cabinetRegistry = {};
         let dpMarkerMap = {};
@@ -198,15 +457,33 @@
         let isDpVisible = true;
         let isCabinetVisible = true;
 
+        // Separate Filter States
+        let mapFilters = { tech: new Set(), province: new Set(), town: new Set(), brgy: new Set(), sales: new Set() };
+        let modalFilters = { tech: new Set(), province: new Set(), town: new Set(), brgy: new Set(), sales: new Set() };
+
         window.addEventListener('DOMContentLoaded', () => {
             try { lucide.createIcons(); } catch(e) {}
             initMap();
             fetchSheetData();
+
+            // Close dropdown menus when clicking outside
+            document.addEventListener('click', (e) => {
+                ['map', 'modal'].forEach(scope => {
+                    ['tech', 'province', 'town', 'brgy', 'sales'].forEach(type => {
+                        const container = document.getElementById(`${scope}-dd-container-${type}`);
+                        const menu = document.getElementById(`${scope}-dd-menu-${type}`);
+                        if (container && !container.contains(e.target) && menu) {
+                            menu.classList.add('hidden');
+                        }
+                    });
+                });
+            });
         });
 
         function initMap() {
-            svgRenderer = L.svg({ padding: 0.5 });
-            map = L.map('map', { center: [CDO_LAT, CDO_LON], zoom: 13, zoomControl: false });
+            // PERFORMANCE UPGRADE: Render map paths via HTML5 Canvas instead of DOM SVGs
+            canvasRenderer = L.canvas({ padding: 0.5 });
+            map = L.map('map', { center: [CDO_LAT, CDO_LON], zoom: 13, zoomControl: false, preferCanvas: true });
             L.control.zoom({ position: 'bottomright' }).addTo(map);
 
             activeTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
@@ -304,12 +581,233 @@
             document.getElementById('cnt-sheet2').innerText = data2.length.toLocaleString();
             document.getElementById('cnt-sheet3').innerText = data3.length.toLocaleString();
 
-            const combinedDataset = [...data1, ...data2, ...data3];
-            processAndPlotEntities(combinedDataset);
+            rawCombinedRows = [...data1, ...data2, ...data3];
+
+            refreshCascadingFilters('map');
+            refreshCascadingFilters('modal');
+            processAndPlotEntities(rawCombinedRows);
 
             if (syncStatus) {
-                syncStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Synced ${combinedDataset.length.toLocaleString()} Total Records`;
+                syncStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Synced ${rawCombinedRows.length.toLocaleString()} Total Records`;
             }
+        }
+
+        // Fast Row Column Extractor
+        function getRowVal(row, candidates, fuzzy) {
+            const keys = Object.keys(row);
+            for (let i = 0; i < candidates.length; i++) {
+                const cand = candidates[i].toUpperCase();
+                const foundKey = keys.find(k => k.trim().toUpperCase() === cand);
+                if (foundKey && row[foundKey] !== undefined && row[foundKey] !== '') return row[foundKey];
+            }
+            if (fuzzy && fuzzy.length > 0) {
+                for (let i = 0; i < fuzzy.length; i++) {
+                    const kw = fuzzy[i].toUpperCase();
+                    const foundKey = keys.find(k => k.trim().toUpperCase().includes(kw));
+                    if (foundKey && row[foundKey] !== undefined && row[foundKey] !== '') return row[foundKey];
+                }
+            }
+            return '';
+        }
+
+        // Helper to extract clean tech
+        function extractTechVal(row) {
+            const rawTech = String(getRowVal(row, ['TECH', 'TECHNOLOGY', 'ODN TECH', 'NET TECH', 'TECH TYPE'], ['TECH']) || 'GPON').toUpperCase();
+            if (rawTech.includes('ADSL') && rawTech.includes('VDSL')) return 'ADSL/VDSL';
+            if (rawTech.includes('ADSL')) return 'ADSL';
+            if (rawTech.includes('VDSL')) return 'VDSL';
+            if (rawTech.includes('GPON')) return 'GPON';
+            return rawTech;
+        }
+
+        // Checks if a row matches selected filters EXCEPT for the specified excluded dimension
+        function isRowMatchingFiltersExcept(row, filterState, excludedType = null) {
+            const tech = extractTechVal(row);
+            const prov = String(getRowVal(row, ['PROVINCE_NAME', 'PROVINCE'], ['PROVINCE'])).trim();
+            const town = String(getRowVal(row, ['CITY_NAME', 'TOWN', 'CITY'], ['CITY', 'TOWN'])).trim();
+            const brgy = String(getRowVal(row, ['BRGY_NAME', 'BARANGAY'], ['BRGY', 'BARANGAY'])).trim();
+            const sales = String(getRowVal(row, ['SALES_AREA', 'SALES AREA'], ['SALES'])).trim();
+
+            if (excludedType !== 'tech' && filterState.tech.size > 0 && !filterState.tech.has(tech)) return false;
+            if (excludedType !== 'province' && filterState.province.size > 0 && !filterState.province.has(prov)) return false;
+            if (excludedType !== 'town' && filterState.town.size > 0 && !filterState.town.has(town)) return false;
+            if (excludedType !== 'brgy' && filterState.brgy.size > 0 && !filterState.brgy.has(brgy)) return false;
+            if (excludedType !== 'sales' && filterState.sales.size > 0 && !filterState.sales.has(sales)) return false;
+
+            return true;
+        }
+
+        function isRowMatchingFilters(row, filterState) {
+            return isRowMatchingFiltersExcept(row, filterState, null);
+        }
+
+        // Dynamic Cascading Filters logic across Tech, Province, Town, Brgy, and Sales Area
+        function refreshCascadingFilters(scope) {
+            const filterState = scope === 'map' ? mapFilters : modalFilters;
+            const filterTypes = ['tech', 'province', 'town', 'brgy', 'sales'];
+
+            filterTypes.forEach(targetType => {
+                const validOptions = new Set();
+
+                rawCombinedRows.forEach(row => {
+                    if (isRowMatchingFiltersExcept(row, filterState, targetType)) {
+                        let val = '';
+                        if (targetType === 'tech') val = extractTechVal(row);
+                        else if (targetType === 'province') val = getRowVal(row, ['PROVINCE_NAME', 'PROVINCE'], ['PROVINCE']);
+                        else if (targetType === 'town') val = getRowVal(row, ['CITY_NAME', 'TOWN', 'CITY'], ['CITY', 'TOWN']);
+                        else if (targetType === 'brgy') val = getRowVal(row, ['BRGY_NAME', 'BARANGAY'], ['BRGY', 'BARANGAY']);
+                        else if (targetType === 'sales') val = getRowVal(row, ['SALES_AREA', 'SALES AREA'], ['SALES']);
+
+                        if (val) validOptions.add(String(val).trim());
+                    }
+                });
+
+                // Remove unselected filter options no longer valid under current selections
+                filterState[targetType].forEach(selectedVal => {
+                    if (!validOptions.has(selectedVal)) {
+                        filterState[targetType].delete(selectedVal);
+                    }
+                });
+
+                renderDropdownOptions(scope, targetType, Array.from(validOptions).sort());
+                updateDropdownLabel(scope, targetType);
+            });
+        }
+
+        function renderDropdownOptions(scope, type, options) {
+            const container = document.getElementById(`${scope}-dd-options-${type}`);
+            if (!container) return;
+
+            const filterState = scope === 'map' ? mapFilters : modalFilters;
+
+            container.innerHTML = options.map(opt => `
+                <label class="flex items-center gap-2 p-1 hover:bg-slate-800 rounded cursor-pointer text-slate-300 text-xs truncate">
+                    <input type="checkbox" value="${opt}" onchange="onFilterOptionChange('${scope}', '${type}', this)" ${filterState[type].has(opt) ? 'checked' : ''} class="rounded bg-slate-900 border-slate-700 text-blue-600">
+                    <span class="truncate">${opt}</span>
+                </label>
+            `).join('');
+        }
+
+        function toggleDropdown(scope, type) {
+            const menu = document.getElementById(`${scope}-dd-menu-${type}`);
+            if (!menu) return;
+            const isHidden = menu.classList.contains('hidden');
+
+            ['map', 'modal'].forEach(s => {
+                ['tech', 'province', 'town', 'brgy', 'sales'].forEach(t => {
+                    const m = document.getElementById(`${s}-dd-menu-${t}`);
+                    if (m) m.classList.add('hidden');
+                });
+            });
+
+            if (isHidden) menu.classList.remove('hidden');
+        }
+
+        function filterDropdownOptions(scope, type, query) {
+            const container = document.getElementById(`${scope}-dd-options-${type}`);
+            if (!container) return;
+            const labels = container.querySelectorAll('label');
+            const q = query.toLowerCase();
+            labels.forEach(lbl => {
+                const text = lbl.innerText.toLowerCase();
+                lbl.style.display = text.includes(q) ? 'flex' : 'none';
+            });
+        }
+
+        function selectAllInDropdown(scope, type) {
+            const container = document.getElementById(`${scope}-dd-options-${type}`);
+            if (!container) return;
+
+            const filterState = scope === 'map' ? mapFilters : modalFilters;
+            const inputs = container.querySelectorAll('input[type="checkbox"]');
+
+            inputs.forEach(input => {
+                if (input.offsetParent !== null) {
+                    filterState[type].add(input.value);
+                    input.checked = true;
+                }
+            });
+
+            refreshCascadingFilters(scope);
+
+            if (scope === 'map') {
+                processAndPlotEntities(rawCombinedRows);
+            } else {
+                computeAndRenderInsights();
+            }
+        }
+
+        function clearAllInDropdown(scope, type) {
+            const filterState = scope === 'map' ? mapFilters : modalFilters;
+            filterState[type].clear();
+
+            refreshCascadingFilters(scope);
+
+            if (scope === 'map') {
+                processAndPlotEntities(rawCombinedRows);
+            } else {
+                computeAndRenderInsights();
+            }
+        }
+
+        function onFilterOptionChange(scope, type, checkbox) {
+            const filterState = scope === 'map' ? mapFilters : modalFilters;
+
+            if (checkbox.checked) {
+                filterState[type].add(checkbox.value);
+            } else {
+                filterState[type].delete(checkbox.value);
+            }
+
+            refreshCascadingFilters(scope);
+
+            if (scope === 'map') {
+                processAndPlotEntities(rawCombinedRows);
+            } else {
+                computeAndRenderInsights();
+            }
+        }
+
+        function updateDropdownLabel(scope, type) {
+            const labelEl = document.getElementById(`${scope}-dd-label-${type}`);
+            const filterState = scope === 'map' ? mapFilters : modalFilters;
+            const count = filterState[type].size;
+
+            if (count === 0) {
+                const defaults = { tech: 'All Technologies', province: 'All Provinces', town: 'All Towns', brgy: 'All Barangays', sales: 'All Sales Areas' };
+                labelEl.innerText = defaults[type];
+            } else {
+                labelEl.innerText = `${count} Selected`;
+            }
+        }
+
+        function resetFilters(scope) {
+            if (scope === 'map') {
+                mapFilters = { tech: new Set(), province: new Set(), town: new Set(), brgy: new Set(), sales: new Set() };
+            } else {
+                modalFilters = { tech: new Set(), province: new Set(), town: new Set(), brgy: new Set(), sales: new Set() };
+            }
+
+            refreshCascadingFilters(scope);
+
+            if (scope === 'map') {
+                processAndPlotEntities(rawCombinedRows);
+            } else {
+                computeAndRenderInsights();
+            }
+        }
+
+        function copyMapFiltersToModal() {
+            modalFilters = {
+                tech: new Set(mapFilters.tech),
+                province: new Set(mapFilters.province),
+                town: new Set(mapFilters.town),
+                brgy: new Set(mapFilters.brgy),
+                sales: new Set(mapFilters.sales)
+            };
+
+            refreshCascadingFilters('modal');
+            computeAndRenderInsights();
         }
 
         function getDPColor(utilDecimal) {
@@ -343,8 +841,9 @@
             if (!rows || rows.length === 0) return;
 
             let stackedDpCount = 0;
+            const filteredRows = rows.filter(r => isRowMatchingFilters(r, mapFilters));
 
-            rows.forEach((row, idx) => {
+            filteredRows.forEach((row, idx) => {
                 const keys = Object.keys(row);
 
                 const getValue = (exactCandidates, fuzzyKeywords) => {
@@ -376,11 +875,7 @@
                 const utilRaw = getValue(['UTILIZATION', 'UTIL %', 'UTILIZATION %', 'UTIL'], ['UTIL']);
                 const woLinesRaw = getValue(['WO LINES', 'WORKING LINES', 'WO_LINES', 'WO LINE', 'WORKING LINE', 'ASSIGNED LINES', 'USED PORTS', 'USED'], ['WO', 'WORKING', 'ASSIGNED', 'USED']);
                 const totalLinesRaw = getValue(['TOTAL LINES', 'TOTAL_LINES', 'TOTAL LINE', 'CAPACITY', 'TOTAL PORTS', 'TOTAL'], ['TOTAL', 'CAPACITY', 'PORTS']);
-
-                const techVal = getValue([
-                    'TECH', 'TECHNOLOGY', 'ODN TECH', 'NET TECH', 'TECH TYPE', 
-                    'PLANNED TECH', 'PSOW TECH', 'TECHNOLOGY TYPE'
-                ], ['TECH']) || 'GPON';
+                const techVal = extractTechVal(row);
 
                 const cabLat = parseNum(getValue(['CAB LAT', 'CABINET LAT', 'CABINET LATITUDE', 'CABLAT'], ['CAB']));
                 const cabLon = parseNum(getValue(['CAB LONG', 'CABINET LONG', 'CABINET LONGITUDE', 'CAB LON', 'CABLONG', 'CABLON'], ['CAB']));
@@ -424,7 +919,7 @@
                         woLines: woVal,
                         totalLines: totalVal,
                         utilRaw: utilRaw,
-                        tech: techVal
+                        tech: String(techVal).toUpperCase()
                     });
 
                     if (cabKey && cabinetRegistry[cabKey]) {
@@ -433,7 +928,7 @@
                 }
             });
 
-            // Plot ALL Unique DPs as Circle Markers
+            // Plot Map Pins using High-Performance Canvas Renderer
             Object.values(dpRegistry).forEach(dp => {
                 let sumWo = 0;
                 let sumTotal = 0;
@@ -460,15 +955,14 @@
                     weight: 0,
                     fillOpacity: 1.0,
                     interactive: true,
-                    renderer: svgRenderer
+                    renderer: canvasRenderer
                 });
 
-                // Tooltip Opens STRICTLY ON CLICK
                 dpMarker.on('click', (e) => {
                     L.DomEvent.stopPropagation(e);
                     closeActiveTooltip();
 
-                    let boxRowsHtml = dp.boxes.map((b, idx) => {
+                    let boxRowsHtml = dp.boxes.map((b) => {
                         let bUtilPct = b.totalLines > 0 ? ((b.woLines / b.totalLines) * 100).toFixed(1) + '%' : (b.utilRaw || '0%');
                         let bUtilDec = b.totalLines > 0 ? (b.woLines / b.totalLines) : parseNum(b.utilRaw);
                         if (bUtilDec > 1) bUtilDec /= 100;
@@ -516,7 +1010,7 @@
                 dpMarkerMap[dp.key] = dpMarker;
             });
 
-            // Plot Cabinet Square Markers
+            // Plot Cabinets
             Object.values(cabinetRegistry).forEach(cab => {
                 const cabIcon = L.divIcon({
                     className: 'custom-cabinet-icon',
@@ -643,6 +1137,117 @@
             if (!isDpVisible && map.hasLayer(dpLayerGroup)) {
                 map.removeLayer(dpLayerGroup);
             }
+        }
+
+        /* INSIGHTS MODAL ENGINE */
+        function openInsightsModal() {
+            computeAndRenderInsights();
+            document.getElementById('insights-modal').classList.remove('hidden');
+        }
+
+        function closeInsightsModal() {
+            document.getElementById('insights-modal').classList.add('hidden');
+        }
+
+        function computeAndRenderInsights() {
+            const filteredRows = rawCombinedRows.filter(r => isRowMatchingFilters(r, modalFilters));
+            const techMap = {};
+
+            filteredRows.forEach(row => {
+                const keys = Object.keys(row);
+                const getValue = (exactCandidates, fuzzyKeywords) => {
+                    for (const candidate of exactCandidates) {
+                        const foundKey = keys.find(k => k.trim().toUpperCase() === candidate.toUpperCase());
+                        if (foundKey && row[foundKey] !== undefined && row[foundKey] !== '') return row[foundKey];
+                    }
+                    if (fuzzyKeywords && fuzzyKeywords.length > 0) {
+                        for (const kw of fuzzyKeywords) {
+                            const foundKey = keys.find(k => k.trim().toUpperCase().includes(kw.toUpperCase()));
+                            if (foundKey && row[foundKey] !== undefined && row[foundKey] !== '') return row[foundKey];
+                        }
+                    }
+                    return null;
+                };
+
+                const woLinesRaw = getValue(['WO LINES', 'WORKING LINES', 'WO_LINES', 'WO LINE', 'WORKING LINE', 'ASSIGNED LINES', 'USED PORTS', 'USED'], ['WO', 'WORKING', 'ASSIGNED', 'USED']);
+                const totalLinesRaw = getValue(['TOTAL LINES', 'TOTAL_LINES', 'TOTAL LINE', 'CAPACITY', 'TOTAL PORTS', 'TOTAL'], ['TOTAL', 'CAPACITY', 'PORTS']);
+                const techVal = extractTechVal(row);
+
+                const woVal = !isNaN(parseNum(woLinesRaw)) ? parseNum(woLinesRaw) : 0;
+                const totalVal = !isNaN(parseNum(totalLinesRaw)) ? parseNum(totalLinesRaw) : 0;
+
+                if (!techMap[techVal]) {
+                    techMap[techVal] = { tech: techVal, recCount: 0, woLines: 0, totalLines: 0 };
+                }
+
+                techMap[techVal].recCount++;
+                techMap[techVal].woLines += woVal;
+                techMap[techVal].totalLines += totalVal;
+            });
+
+            // Update Header Summary
+            const activeFilterNames = [];
+            if (modalFilters.tech.size > 0) activeFilterNames.push(`${modalFilters.tech.size} Techs`);
+            if (modalFilters.province.size > 0) activeFilterNames.push(`${modalFilters.province.size} Prov`);
+            if (modalFilters.town.size > 0) activeFilterNames.push(`${modalFilters.town.size} Towns`);
+            if (modalFilters.brgy.size > 0) activeFilterNames.push(`${modalFilters.brgy.size} Brgys`);
+            if (modalFilters.sales.size > 0) activeFilterNames.push(`${modalFilters.sales.size} Sales`);
+
+            document.getElementById('modal-filter-context').innerText = activeFilterNames.length > 0 ? activeFilterNames.join(' | ') : 'All Locations & Techs';
+            document.getElementById('modal-total-dps').innerText = `${filteredRows.length.toLocaleString()} Records Matched`;
+
+            const cardsContainer = document.getElementById('tech-summary-cards');
+            const tbody = document.getElementById('tech-matrix-tbody');
+
+            cardsContainer.innerHTML = '';
+            tbody.innerHTML = '';
+
+            const techKeys = Object.keys(techMap).sort();
+
+            if (techKeys.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-500">No records found matching current modal filters.</td></tr>`;
+                return;
+            }
+
+            techKeys.forEach(tech => {
+                const item = techMap[tech];
+                const availPorts = Math.max(0, item.totalLines - item.woLines);
+                const utilPct = item.totalLines > 0 ? ((item.woLines / item.totalLines) * 100).toFixed(1) : '0.0';
+                const color = getDPColor(item.totalLines > 0 ? (item.woLines / item.totalLines) : 0);
+
+                cardsContainer.innerHTML += `
+                    <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-white text-xs">${item.tech}</span>
+                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" style="background:${color}20; color:${color}">${utilPct}%</span>
+                        </div>
+                        <div class="text-[11px] text-slate-400 font-mono">
+                            <div>WO: <strong class="text-emerald-400">${item.woLines.toLocaleString()}</strong></div>
+                            <div>Cap: <strong class="text-slate-200">${item.totalLines.toLocaleString()}</strong></div>
+                        </div>
+                    </div>
+                `;
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-900/60 transition">
+                        <td class="p-3 font-bold text-amber-400">${item.tech}</td>
+                        <td class="p-3 text-right font-mono">${item.recCount.toLocaleString()}</td>
+                        <td class="p-3 text-right font-mono text-emerald-400">${item.woLines.toLocaleString()}</td>
+                        <td class="p-3 text-right font-mono text-slate-200">${item.totalLines.toLocaleString()}</td>
+                        <td class="p-3 text-right font-mono text-blue-400">${availPorts.toLocaleString()}</td>
+                        <td class="p-3 text-center font-mono font-bold" style="color:${color}">
+                            <div class="flex items-center justify-center gap-2">
+                                <div class="w-16 bg-slate-800 rounded-full h-1.5 overflow-hidden hidden sm:block">
+                                    <div class="h-full rounded-full" style="width:${Math.min(100, parseFloat(utilPct))}%; background:${color}"></div>
+                                </div>
+                                <span>${utilPct}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            try { lucide.createIcons(); } catch(e) {}
         }
     </script>
 </body>
