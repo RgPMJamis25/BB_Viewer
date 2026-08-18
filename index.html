@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NAP, DP & Cabinet Utilization Map - Geospatial Deck</title>
+    <title>T8 Broadband Business Tool</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -33,6 +33,19 @@
 
         .cabinet-icon-wrapper { background: #8b5cf6; border: none; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 0 10px rgba(139, 92, 246, 0.9); cursor: pointer; }
         .cabinet-icon-wrapper.active-cab { background: #f59e0b; box-shadow: 0 0 20px rgba(245, 158, 11, 1); transform: scale(1.3); transition: transform 0.15s ease; }
+
+        .target-pin-icon { background: #ef4444; border: 2px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 0 15px rgba(239, 68, 68, 1); animation: bounce-pin 1s infinite alternate; }
+        @keyframes bounce-pin { 0% { transform: translateY(0); } 100% { transform: translateY(-6px); } }
+
+        .gps-arrow-icon {
+            width: 0;
+            height: 0;
+            border-left: 9px solid transparent;
+            border-right: 9px solid transparent;
+            border-bottom: 22px solid #3b82f6;
+            filter: drop-shadow(0px 0px 6px rgba(59, 130, 246, 0.9));
+            transform: rotate(-35deg);
+        }
 
         .dp-aura-ring {
             width: 28px;
@@ -69,7 +82,7 @@
                     <i data-lucide="map-pin" class="w-5 h-5"></i>
                 </div>
                 <div>
-                    <h1 class="font-bold text-sm sm:text-base text-slate-900 dark:text-white leading-tight">NAP, DP & Cabinet Geospatial Deck</h1>
+                    <h1 class="font-bold text-sm sm:text-base text-slate-900 dark:text-white leading-tight">T8 Broadband Business Tool</h1>
                     <p class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 flex-wrap">
                         <span>Default Focus: <strong class="text-amber-400">Cagayan de Oro City</strong></span>
                         <span class="inline-block w-1 h-1 rounded-full bg-slate-400 dark:bg-slate-600"></span>
@@ -81,15 +94,32 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-3 text-xs font-semibold">
-            <!-- Insights Modal Launch Button -->
+        <!-- Global Search Bar Engine -->
+        <div class="hidden md:flex items-center relative w-72 lg:w-96">
+            <div class="relative w-full">
+                <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
+                <input type="text" id="global-search-input" placeholder="Search town, brgy, DP, cabinet..." oninput="onGlobalSearchInput(this.value)" class="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg pl-9 pr-8 py-1.5 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-blue-500">
+                <button onclick="clearGlobalSearch()" id="global-search-clear" class="hidden absolute right-2.5 top-2 text-slate-400 hover:text-white"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+            </div>
+            <div id="global-search-results" class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 max-h-72 custom-scrollbar overflow-y-auto p-1 space-y-1"></div>
+        </div>
+
+        <div class="flex items-center gap-2 sm:gap-3 text-xs font-semibold">
+            <button onclick="openServiceabilityModal()" class="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-lg transition shadow-md flex items-center gap-1.5 border border-emerald-400/30">
+                <i data-lucide="search-check" class="w-4 h-4"></i>
+                <span>Check Serviceability</span>
+            </button>
+
             <button onclick="openInsightsModal()" class="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-lg transition shadow-md flex items-center gap-1.5 border border-blue-400/30">
                 <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
                 <span>Insights & Tech Util</span>
             </button>
 
-            <!-- Header Layer Toggles -->
-            <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+            <button onclick="locateUserGps()" class="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-blue-400 rounded-lg border border-slate-300 dark:border-slate-700 transition" title="Locate My GPS Position">
+                <i data-lucide="navigation" class="w-4 h-4"></i>
+            </button>
+
+            <div class="hidden xl:flex items-center gap-2 bg-slate-100 dark:bg-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                 <label class="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold">
                     <input type="checkbox" id="hdr-chk-dp" checked onchange="toggleDpLayer(this.checked)" class="rounded bg-slate-200 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-blue-600">
                     <span class="text-blue-400">Show DPs</span>
@@ -99,15 +129,6 @@
                     <input type="checkbox" id="hdr-chk-cab" checked onchange="toggleCabinetLayer(this.checked)" class="rounded bg-slate-200 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-purple-600">
                     <span class="text-purple-400">Show Cabinets</span>
                 </label>
-            </div>
-
-            <!-- Heatmap Legend -->
-            <div class="hidden lg:flex items-center gap-3 bg-slate-100 dark:bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                <span class="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">DP Util:</span>
-                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> 90-100%</span>
-                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> 50-89%</span>
-                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> &lt;50%</span>
-                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> 0%</span>
             </div>
 
             <button onclick="clearCabinetSelection()" id="btn-clear-selection" class="hidden px-2.5 py-1.5 text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition flex items-center gap-1.5 shadow-sm">
@@ -126,8 +147,7 @@
 
     <div class="flex-1 flex overflow-hidden relative">
         <aside id="sidebar-deck" class="w-80 sm:w-96 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col z-20 shrink-0 transition-all duration-300 custom-scrollbar overflow-y-auto">
-            <div class="p-4 space-y-5">
-                <!-- Map Filters Block -->
+            <div class="p-4 space-y-5 flex-1">
                 <div class="space-y-3">
                     <div class="flex items-center justify-between">
                         <div class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
@@ -141,7 +161,7 @@
                             <label class="block font-semibold mb-1 text-slate-300">Technology (Tech)</label>
                             <div class="relative" id="map-dd-container-tech">
                                 <button type="button" onclick="toggleDropdown('map', 'tech')" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-left flex justify-between items-center text-slate-200">
-                                    <span id="map-dd-label-tech" class="truncate">All Technologies</span>
+                                    <span id="map-dd-label-tech" class="truncate font-bold text-amber-400">1 Selected (GPON)</span>
                                     <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400"></i>
                                 </button>
                                 <div id="map-dd-menu-tech" class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 p-2 space-y-1">
@@ -274,11 +294,116 @@
                     <div id="cab-inspector-content" class="space-y-1"></div>
                 </div>
             </div>
+
+            <!-- Sidebar Footnote Contact Information Card -->
+            <div class="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-950/80 text-[11px] text-slate-400 space-y-1 shrink-0 mt-auto">
+                <div class="font-bold text-slate-300 flex items-center gap-1">
+                    <i data-lucide="info" class="w-3.5 h-3.5 text-blue-400"></i> For more info, please contact:
+                </div>
+                <div class="pl-4 space-y-0.5 font-sans">
+                    <div class="font-semibold text-slate-200">Matthew James Omega</div>
+                    <div class="text-slate-400">RgPM T8</div>
+                    <div class="text-slate-300 font-mono flex items-center gap-1">
+                        <i data-lucide="phone" class="w-3 h-3 text-emerald-400"></i> Mobile & WhatsApp: <strong class="text-emerald-400">+639176885022</strong>
+                    </div>
+                    <div class="text-slate-300 font-mono flex items-center gap-1 truncate">
+                        <i data-lucide="mail" class="w-3 h-3 text-blue-400"></i> Email: <a href="mailto:matthew.omega@globe.com.ph" class="text-blue-400 underline">matthew.omega@globe.com.ph</a>
+                    </div>
+                </div>
+            </div>
         </aside>
 
         <main class="flex-1 relative flex flex-col h-full bg-slate-100 dark:bg-slate-950 overflow-hidden">
             <div id="map" class="flex-1 w-full h-full z-0"></div>
+
+            <!-- Minimizable Floating On-Map Legend -->
+            <div id="map-legend-card" class="absolute bottom-6 left-6 z-10 glass-card p-3 rounded-xl border border-slate-700/80 shadow-2xl text-xs space-y-2 max-w-xs transition-all duration-300">
+                <div class="flex items-center justify-between font-bold border-b border-slate-700 pb-1.5 text-slate-200 gap-4">
+                    <span class="flex items-center gap-1.5 uppercase tracking-wider text-[10px] text-slate-400">
+                        <i data-lucide="map" class="w-3.5 h-3.5 text-blue-400"></i> Map Symbol Legend
+                    </span>
+                    <button onclick="toggleMapLegend()" class="text-slate-400 hover:text-white p-0.5 rounded transition" title="Toggle Legend">
+                        <i id="map-legend-chevron" data-lucide="chevron-down" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <div id="map-legend-body" class="space-y-2 pt-1">
+                    <div class="space-y-1">
+                        <div class="text-[10px] font-bold uppercase text-slate-400">DP Utilization Category</div>
+                        <div class="grid grid-cols-2 gap-1.5 text-[11px] font-medium">
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block shadow"></span> 0% (Empty)</div>
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shadow"></span> &lt;50% (Low)</div>
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block shadow"></span> 50-89% (Mid)</div>
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block shadow"></span> 90-100% (High)</div>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-800/80 pt-1.5 space-y-1">
+                        <div class="text-[10px] font-bold uppercase text-slate-400">Infrastructure Elements</div>
+                        <div class="flex items-center gap-2 text-[11px]">
+                            <div class="w-4 h-4 rounded bg-purple-600 flex items-center justify-center text-white shadow"><i data-lucide="box" class="w-2.5 h-2.5"></i></div>
+                            <span>Cabinet Terminal Unit</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
+    </div>
+
+    <!-- Serviceability Modal -->
+    <div id="serviceability-modal" class="hidden fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-7xl rounded-2xl shadow-2xl flex flex-col h-[90vh] overflow-hidden">
+            <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950 shrink-0">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="search-check" class="w-5 h-5 text-emerald-400"></i>
+                    <div>
+                        <h2 class="text-base font-bold text-white">GPON Serviceability Checker</h2>
+                        <p class="text-[11px] text-slate-400">Check nearest GPON DPs within 500m radius with dedicated inspection map</p>
+                    </div>
+                </div>
+                <button onclick="closeServiceabilityModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden">
+                <div class="lg:col-span-5 flex flex-col border-r border-slate-800 bg-slate-950/50 overflow-hidden">
+                    <div class="p-4 border-b border-slate-800 space-y-3 shrink-0 text-xs">
+                        <div>
+                            <label class="block font-semibold mb-1 text-slate-300">Target Coordinates (Lat, Lon)</label>
+                            <input type="text" id="svc-coord-input" placeholder="e.g. 8.4542, 124.6319" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 outline-none focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block font-semibold mb-1 text-slate-300">Search Address / Place</label>
+                            <div class="flex gap-1.5">
+                                <input type="text" id="svc-address-input" placeholder="Search town/brgy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 outline-none focus:border-emerald-500">
+                                <button onclick="geocodeAddress()" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-bold border border-slate-700">Search</button>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-1 flex-wrap gap-2">
+                            <button onclick="enableSvcMapPinPicker()" class="px-2.5 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 font-bold rounded-lg border border-amber-500/40 transition flex items-center gap-1.5">
+                                <i data-lucide="crosshair" class="w-3.5 h-3.5"></i> Pin on Modal Map
+                            </button>
+                            <div class="flex gap-1.5">
+                                <button onclick="resetServiceability()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg border border-slate-700 transition">Reset</button>
+                                <button onclick="calculateServiceabilityFromInput()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition shadow">Run Check</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="svc-results-container" class="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-3 text-xs">
+                        <div class="text-center text-slate-500 py-12">
+                            Enter coordinates, search an address, or pin a point on the inspector map to evaluate GPON serviceability.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-7 relative flex flex-col h-full bg-slate-950">
+                    <div id="svc-map" class="w-full h-full flex-1 z-0"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Insights Modal -->
@@ -302,7 +427,6 @@
                 </div>
             </div>
 
-            <!-- Insights Modal Independent Filter Bar -->
             <div class="p-3 bg-slate-950 border-b border-slate-800 shrink-0 space-y-2">
                 <div class="flex items-center justify-between text-xs">
                     <span class="font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -315,7 +439,7 @@
                     <div>
                         <div class="relative" id="modal-dd-container-tech">
                             <button type="button" onclick="toggleDropdown('modal', 'tech')" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-left flex justify-between items-center text-slate-200">
-                                <span id="modal-dd-label-tech" class="truncate text-[11px]">All Techs</span>
+                                <span id="modal-dd-label-tech" class="truncate text-[11px] font-bold text-amber-400">1 Selected (GPON)</span>
                                 <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400"></i>
                             </button>
                             <div id="modal-dd-menu-tech" class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 p-2 space-y-1">
@@ -400,7 +524,7 @@
             </div>
 
             <div class="p-3 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between text-xs text-slate-400 shrink-0">
-                <span>Active Scope: <strong id="modal-filter-context" class="text-amber-400">All Locations</strong></span>
+                <span>Active Scope: <strong id="modal-filter-context" class="text-amber-400">GPON Only</strong></span>
                 <span id="modal-total-dps" class="font-mono text-blue-400 font-bold">0 Records Matched</span>
             </div>
 
@@ -408,14 +532,27 @@
                 <!-- Global Tech Overview Cards -->
                 <div id="tech-summary-cards" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
 
-                <!-- Technology Detailed Utilization Table -->
+                <!-- Aggregation / Group-By Matrix Header -->
                 <div class="space-y-3">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Technology Detail Matrix</h3>
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Utilization Detail Matrix</h3>
+
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="text-slate-400 font-medium">Group By:</span>
+                            <select id="modal-groupby-select" onchange="onInsightsGroupChange(this.value)" class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-amber-400 font-bold outline-none focus:border-indigo-500">
+                                <option value="sales" selected>Sales Area (SALES_AREA)</option>
+                                <option value="town">Town / City (CITY_NAME, PROVINCE)</option>
+                                <option value="province">Province (PROVINCE_NAME)</option>
+                                <option value="brgy">Barangay (BRGY_NAME, CITY)</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40">
                         <table class="w-full text-left text-xs text-slate-300">
                             <thead class="bg-slate-950 text-slate-400 uppercase font-semibold border-b border-slate-800 text-[10px]">
                                 <tr>
-                                    <th class="p-3">Technology</th>
+                                    <th id="matrix-col-header" class="p-3">Sales Area</th>
                                     <th class="p-3 text-right">Records Count</th>
                                     <th class="p-3 text-right">Working Lines</th>
                                     <th class="p-3 text-right">Total Capacity</th>
@@ -440,11 +577,15 @@
         const CDO_LON = 124.6319;
 
         let map = null;
+        let svcMap = null;
         let activeTileLayer = null;
+        let svcActiveTileLayer = null;
         let canvasRenderer = null;
         let dpLayerGroup = null;
         let cabinetLayerGroup = null;
         let auraLayerGroup = null;
+        let serviceabilityLayerGroup = null;
+        let userGpsMarker = null;
 
         let rawCombinedRows = [];
         let dpRegistry = {};
@@ -456,14 +597,18 @@
         let activeTooltip = null;
         let isDpVisible = true;
         let isCabinetVisible = true;
+        let isSvcPinPickerActive = false;
+        let isLegendCollapsed = false;
 
-        // Separate Filter States
-        let mapFilters = { tech: new Set(), province: new Set(), town: new Set(), brgy: new Set(), sales: new Set() };
-        let modalFilters = { tech: new Set(), province: new Set(), town: new Set(), brgy: new Set(), sales: new Set() };
+        // Default filter state: GPON pre-selected
+        let mapFilters = { tech: new Set(['GPON']), province: new Set(), town: new Set(), brgy: new Set(), sales: new Set() };
+        let modalFilters = { tech: new Set(['GPON']), province: new Set(), town: new Set(), brgy: new Set(), sales: new Set() };
+        let currentModalGroupBy = 'sales';
 
         window.addEventListener('DOMContentLoaded', () => {
             try { lucide.createIcons(); } catch(e) {}
             initMap();
+            initServiceabilityMap();
             fetchSheetData();
 
             // Close dropdown menus when clicking outside
@@ -477,11 +622,16 @@
                         }
                     });
                 });
+
+                const globalSearch = document.getElementById('global-search-results');
+                const globalInput = document.getElementById('global-search-input');
+                if (globalSearch && globalInput && !globalSearch.contains(e.target) && !globalInput.contains(e.target)) {
+                    globalSearch.classList.add('hidden');
+                }
             });
         });
 
         function initMap() {
-            // PERFORMANCE UPGRADE: Render map paths via HTML5 Canvas instead of DOM SVGs
             canvasRenderer = L.canvas({ padding: 0.5 });
             map = L.map('map', { center: [CDO_LAT, CDO_LON], zoom: 13, zoomControl: false, preferCanvas: true });
             L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -500,6 +650,38 @@
             });
         }
 
+        function toggleMapLegend() {
+            const body = document.getElementById('map-legend-body');
+            const chevron = document.getElementById('map-legend-chevron');
+            isLegendCollapsed = !isLegendCollapsed;
+
+            if (isLegendCollapsed) {
+                body.classList.add('hidden');
+                chevron.style.transform = 'rotate(180deg)';
+            } else {
+                body.classList.remove('hidden');
+                chevron.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function initServiceabilityMap() {
+            svcMap = L.map('svc-map', { center: [CDO_LAT, CDO_LON], zoom: 13, zoomControl: false, preferCanvas: true });
+            L.control.zoom({ position: 'bottomright' }).addTo(svcMap);
+            svcActiveTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(svcMap);
+            serviceabilityLayerGroup = L.featureGroup().addTo(svcMap);
+
+            svcMap.on('click', (e) => {
+                if (isSvcPinPickerActive) {
+                    isSvcPinPickerActive = false;
+                    svcMap.getContainer().style.cursor = '';
+                    const lat = e.latlng.lat;
+                    const lng = e.latlng.lng;
+                    document.getElementById('svc-coord-input').value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                    runServiceabilityCheck(lat, lng);
+                }
+            });
+        }
+
         function closeActiveTooltip() {
             if (activeTooltip) {
                 map.closeTooltip(activeTooltip);
@@ -514,12 +696,16 @@
 
         function toggleTheme() {
             document.documentElement.classList.toggle('dark');
-            if (activeTileLayer) map.removeLayer(activeTileLayer);
             const isDark = document.documentElement.classList.contains('dark');
             const tileUrl = isDark 
                 ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
                 : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
+            if (activeTileLayer) map.removeLayer(activeTileLayer);
             activeTileLayer = L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(map);
+
+            if (svcActiveTileLayer) svcMap.removeLayer(svcActiveTileLayer);
+            svcActiveTileLayer = L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(svcMap);
         }
 
         function toggleDpLayer(show) {
@@ -560,6 +746,7 @@
             return null;
         }
 
+        // ORIGINAL WORKING PARSER RESTORED (Prevents truncated 52-record limit)
         async function fetchSheetData() {
             const syncStatus = document.getElementById('sync-status');
             if (syncStatus) syncStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Syncing Google Sheets...';
@@ -592,25 +779,24 @@
             }
         }
 
-        // Fast Row Column Extractor
         function getRowVal(row, candidates, fuzzy) {
+            if (!row) return '';
             const keys = Object.keys(row);
             for (let i = 0; i < candidates.length; i++) {
                 const cand = candidates[i].toUpperCase();
                 const foundKey = keys.find(k => k.trim().toUpperCase() === cand);
-                if (foundKey && row[foundKey] !== undefined && row[foundKey] !== '') return row[foundKey];
+                if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null && String(row[foundKey]).trim() !== '') return row[foundKey];
             }
             if (fuzzy && fuzzy.length > 0) {
                 for (let i = 0; i < fuzzy.length; i++) {
                     const kw = fuzzy[i].toUpperCase();
                     const foundKey = keys.find(k => k.trim().toUpperCase().includes(kw));
-                    if (foundKey && row[foundKey] !== undefined && row[foundKey] !== '') return row[foundKey];
+                    if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null && String(row[foundKey]).trim() !== '') return row[foundKey];
                 }
             }
             return '';
         }
 
-        // Helper to extract clean tech
         function extractTechVal(row) {
             const rawTech = String(getRowVal(row, ['TECH', 'TECHNOLOGY', 'ODN TECH', 'NET TECH', 'TECH TYPE'], ['TECH']) || 'GPON').toUpperCase();
             if (rawTech.includes('ADSL') && rawTech.includes('VDSL')) return 'ADSL/VDSL';
@@ -620,7 +806,6 @@
             return rawTech;
         }
 
-        // Checks if a row matches selected filters EXCEPT for the specified excluded dimension
         function isRowMatchingFiltersExcept(row, filterState, excludedType = null) {
             const tech = extractTechVal(row);
             const prov = String(getRowVal(row, ['PROVINCE_NAME', 'PROVINCE'], ['PROVINCE'])).trim();
@@ -641,7 +826,6 @@
             return isRowMatchingFiltersExcept(row, filterState, null);
         }
 
-        // Dynamic Cascading Filters logic across Tech, Province, Town, Brgy, and Sales Area
         function refreshCascadingFilters(scope) {
             const filterState = scope === 'map' ? mapFilters : modalFilters;
             const filterTypes = ['tech', 'province', 'town', 'brgy', 'sales'];
@@ -662,7 +846,6 @@
                     }
                 });
 
-                // Remove unselected filter options no longer valid under current selections
                 filterState[targetType].forEach(selectedVal => {
                     if (!validOptions.has(selectedVal)) {
                         filterState[targetType].delete(selectedVal);
@@ -776,16 +959,22 @@
             if (count === 0) {
                 const defaults = { tech: 'All Technologies', province: 'All Provinces', town: 'All Towns', brgy: 'All Barangays', sales: 'All Sales Areas' };
                 labelEl.innerText = defaults[type];
+                labelEl.className = 'truncate';
+            } else if (count === 1) {
+                const singleVal = Array.from(filterState[type])[0];
+                labelEl.innerText = `1 Selected (${singleVal})`;
+                labelEl.className = 'truncate font-bold text-amber-400';
             } else {
                 labelEl.innerText = `${count} Selected`;
+                labelEl.className = 'truncate font-bold text-amber-400';
             }
         }
 
         function resetFilters(scope) {
             if (scope === 'map') {
-                mapFilters = { tech: new Set(), province: new Set(), town: new Set(), brgy: new Set(), sales: new Set() };
+                mapFilters = { tech: new Set(['GPON']), province: new Set(), town: new Set(), brgy: new Set(), sales: new Set() };
             } else {
-                modalFilters = { tech: new Set(), province: new Set(), town: new Set(), brgy: new Set(), sales: new Set() };
+                modalFilters = { tech: new Set(['GPON']), province: new Set(), town: new Set(), brgy: new Set(), sales: new Set() };
             }
 
             refreshCascadingFilters(scope);
@@ -928,7 +1117,7 @@
                 }
             });
 
-            // Plot Map Pins using High-Performance Canvas Renderer
+            // Canvas renderer markers
             Object.values(dpRegistry).forEach(dp => {
                 let sumWo = 0;
                 let sumTotal = 0;
@@ -1139,7 +1328,311 @@
             }
         }
 
-        /* INSIGHTS MODAL ENGINE */
+        /* GLOBAL SEARCH ENGINE */
+        function onGlobalSearchInput(query) {
+            const resultsBox = document.getElementById('global-search-results');
+            const clearBtn = document.getElementById('global-search-clear');
+            const q = query.trim().toLowerCase();
+
+            if (!q) {
+                resultsBox.classList.add('hidden');
+                if (clearBtn) clearBtn.classList.add('hidden');
+                return;
+            }
+
+            if (clearBtn) clearBtn.classList.remove('hidden');
+
+            const matches = [];
+            const seenKeys = new Set();
+
+            rawCombinedRows.forEach(row => {
+                const town = String(getRowVal(row, ['CITY_NAME', 'TOWN', 'CITY'], ['CITY', 'TOWN'])).trim();
+                const brgy = String(getRowVal(row, ['BRGY_NAME', 'BARANGAY'], ['BRGY', 'BARANGAY'])).trim();
+                const dpName = String(getRowVal(row, ['DP', 'DP NAME', 'DP/NAP NAME', 'NAP NAME'], [])).trim();
+                const cabName = String(getRowVal(row, ['CAB NAME', 'CABINET NAME', 'CAB ID'], ['CAB'])).trim();
+                const address = String(getRowVal(row, ['ADDRESS', 'LOCATION', 'STREET'], ['ADDRESS'])).trim();
+
+                const lat = parseNum(getRowVal(row, ['DP/NAP LAT', 'DP LAT', 'NAP LAT'], ['LAT']));
+                const lon = parseNum(getRowVal(row, ['DP/NAP LONG', 'DP LONG', 'NAP LONG'], ['LON', 'LONG']));
+
+                if (!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
+                    const fullText = `${town} ${brgy} ${dpName} ${cabName} ${address}`.toLowerCase();
+                    if (fullText.includes(q)) {
+                        const matchKey = `${lat},${lon}`;
+                        if (!seenKeys.has(matchKey) && matches.length < 25) {
+                            seenKeys.add(matchKey);
+                            matches.push({
+                                title: dpName || cabName || 'Location Match',
+                                subtitle: `${town}, ${brgy} ${address ? '• ' + address : ''}`,
+                                lat: lat,
+                                lon: lon
+                            });
+                        }
+                    }
+                }
+            });
+
+            if (matches.length === 0) {
+                resultsBox.innerHTML = `<div class="p-2 text-xs text-slate-500 text-center">No assets found matching "${query}"</div>`;
+                resultsBox.classList.remove('hidden');
+                return;
+            }
+
+            resultsBox.innerHTML = matches.map(m => `
+                <div onclick="jumpToSearchResult(${m.lat}, ${m.lon}, '${m.title}')" class="p-2 hover:bg-slate-800 rounded-lg cursor-pointer transition flex items-center justify-between text-xs">
+                    <div>
+                        <div class="font-bold text-amber-400">${m.title}</div>
+                        <div class="text-[10px] text-slate-400">${m.subtitle}</div>
+                    </div>
+                    <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-slate-500"></i>
+                </div>
+            `).join('');
+
+            resultsBox.classList.remove('hidden');
+            try { lucide.createIcons(); } catch(e) {}
+        }
+
+        function clearGlobalSearch() {
+            document.getElementById('global-search-input').value = '';
+            document.getElementById('global-search-results').classList.add('hidden');
+            document.getElementById('global-search-clear').classList.add('hidden');
+        }
+
+        function jumpToSearchResult(lat, lon, title) {
+            clearGlobalSearch();
+            map.setView([lat, lon], 17);
+
+            L.circleMarker([lat, lon], {
+                radius: 14,
+                color: '#f59e0b',
+                fillColor: '#f59e0b',
+                fillOpacity: 0.6,
+                weight: 3
+            }).addTo(map);
+        }
+
+        /* GPS LOCATION WITH ARROW ICON */
+        function locateUserGps() {
+            if (!navigator.geolocation) {
+                alert('Geolocation is not supported by your browser');
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition((position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+
+                if (userGpsMarker) map.removeLayer(userGpsMarker);
+
+                const gpsArrowIcon = L.divIcon({
+                    className: 'custom-gps-arrow',
+                    html: `<div class="gps-arrow-icon"></div>`,
+                    iconSize: [20, 22],
+                    iconAnchor: [10, 11]
+                });
+
+                userGpsMarker = L.marker([lat, lon], { icon: gpsArrowIcon, zIndexOffset: 2000 }).addTo(map);
+                map.setView([lat, lon], 16);
+            }, () => {
+                alert('Unable to retrieve your location');
+            }, { enableHighAccuracy: true });
+        }
+
+        /* SERVICEABILITY ENGINE */
+        function openServiceabilityModal() {
+            document.getElementById('serviceability-modal').classList.remove('hidden');
+            setTimeout(() => { if (svcMap) svcMap.invalidateSize(); }, 250);
+        }
+
+        function closeServiceabilityModal() {
+            document.getElementById('serviceability-modal').classList.add('hidden');
+        }
+
+        function enableSvcMapPinPicker() {
+            isSvcPinPickerActive = true;
+            svcMap.getContainer().style.cursor = 'crosshair';
+            alert('Click anywhere on the modal inspector map to set your target location.');
+        }
+
+        function resetServiceability() {
+            document.getElementById('svc-coord-input').value = '';
+            document.getElementById('svc-address-input').value = '';
+            document.getElementById('svc-results-container').innerHTML = `
+                <div class="text-center text-slate-500 py-12">
+                    Enter coordinates, search an address, or pin a point on the inspector map to evaluate GPON serviceability.
+                </div>
+            `;
+            if (serviceabilityLayerGroup) serviceabilityLayerGroup.clearLayers();
+        }
+
+        function calculateDistanceMeters(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        async function geocodeAddress() {
+            const query = document.getElementById('svc-address-input').value.trim();
+            if (!query) return;
+
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    const lat = parseFloat(data[0].lat);
+                    const lon = parseFloat(data[0].lon);
+                    document.getElementById('svc-coord-input').value = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+                    runServiceabilityCheck(lat, lon);
+                } else {
+                    alert('Address not found. Please try adding more details or use coordinates.');
+                }
+            } catch(e) {
+                alert('Geocoding error. Please use explicit coordinates or map pinning.');
+            }
+        }
+
+        function calculateServiceabilityFromInput() {
+            const val = document.getElementById('svc-coord-input').value.trim();
+            const parts = val.split(',').map(s => parseFloat(s.trim()));
+            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                runServiceabilityCheck(parts[0], parts[1]);
+            } else {
+                alert('Please enter valid Lat, Lon coordinates (e.g. 8.4542, 124.6319)');
+            }
+        }
+
+        function runServiceabilityCheck(targetLat, targetLon) {
+            if (serviceabilityLayerGroup) serviceabilityLayerGroup.clearLayers();
+
+            const candidates = [];
+
+            Object.values(dpRegistry).forEach(dp => {
+                const gponBoxes = dp.boxes.filter(b => b.tech === 'GPON');
+                if (gponBoxes.length > 0) {
+                    let totalWo = 0;
+                    let totalCap = 0;
+                    gponBoxes.forEach(b => {
+                        totalWo += b.woLines;
+                        totalCap += b.totalLines;
+                    });
+
+                    const distMeters = calculateDistanceMeters(targetLat, targetLon, dp.lat, dp.lon);
+                    const availPorts = Math.max(0, totalCap - totalWo);
+
+                    candidates.push({
+                        dpName: dp.dpName,
+                        lat: dp.lat,
+                        lon: dp.lon,
+                        distMeters: distMeters,
+                        totalCap: totalCap,
+                        woLines: totalWo,
+                        availPorts: availPorts,
+                        isWithin500m: distMeters <= 500,
+                        isServiced: distMeters <= 500 && availPorts > 0
+                    });
+                }
+            });
+
+            candidates.sort((a, b) => a.distMeters - b.distMeters);
+            const top5 = candidates.slice(0, 5);
+            const isOverallServiceable = top5.some(c => c.isServiced);
+
+            // Render Target Pin on Serviceability Map
+            const pinIcon = L.divIcon({
+                className: 'custom-target-pin',
+                html: `<div class="target-pin-icon w-6 h-6"><i data-lucide="map-pin" class="w-4 h-4"></i></div>`,
+                iconSize: [24, 24],
+                iconAnchor: [12, 24]
+            });
+            L.marker([targetLat, targetLon], { icon: pinIcon, zIndexOffset: 1000 }).addTo(serviceabilityLayerGroup);
+
+            L.circle([targetLat, targetLon], {
+                radius: 500,
+                color: isOverallServiceable ? '#10b981' : '#ef4444',
+                fillColor: isOverallServiceable ? '#10b981' : '#ef4444',
+                fillOpacity: 0.08,
+                weight: 2,
+                dashArray: '4, 6'
+            }).addTo(serviceabilityLayerGroup);
+
+            top5.forEach((c) => {
+                const lineColor = c.isServiced ? '#10b981' : (c.isWithin500m ? '#f59e0b' : '#ef4444');
+                L.polyline([[targetLat, targetLon], [c.lat, c.lon]], {
+                    color: lineColor,
+                    weight: 2,
+                    dashArray: '3, 4'
+                }).addTo(serviceabilityLayerGroup);
+
+                L.circleMarker([c.lat, c.lon], {
+                    radius: 7,
+                    fillColor: lineColor,
+                    fillOpacity: 1,
+                    stroke: true,
+                    color: '#ffffff',
+                    weight: 2
+                }).addTo(serviceabilityLayerGroup);
+            });
+
+            const bounds = [[targetLat, targetLon], ...top5.map(c => [c.lat, c.lon])];
+            if (bounds.length > 1) {
+                svcMap.fitBounds(bounds, { padding: [60, 60] });
+            } else {
+                svcMap.setView([targetLat, targetLon], 16);
+            }
+
+            const resultsContainer = document.getElementById('svc-results-container');
+            resultsContainer.innerHTML = `
+                <div class="p-3 rounded-xl ${isOverallServiceable ? 'bg-emerald-950/60 border border-emerald-500/50 text-emerald-200' : 'bg-rose-950/60 border border-rose-500/50 text-rose-200'} space-y-1.5">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] uppercase font-bold tracking-wider">Serviceability Verdict:</span>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${isOverallServiceable ? 'bg-emerald-500 text-slate-950' : 'bg-rose-500 text-white'}">
+                            ${isOverallServiceable ? 'SERVICEABLE' : 'NON-SERVICEABLE'}
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-slate-300">
+                        ${isOverallServiceable 
+                            ? 'Target location is within 500m of an active GPON DP with available lines.' 
+                            : 'No GPON DPs with available ports were found within a 500m radius.'}
+                    </p>
+                </div>
+
+                <div class="space-y-2">
+                    <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Top 5 Nearest GPON DPs</h4>
+                    <div class="space-y-2">
+                        ${top5.map((c, idx) => {
+                            const badgeColor = c.isServiced ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : (c.isWithin500m ? 'bg-amber-500/20 text-amber-400 border-amber-500/40' : 'bg-rose-500/20 text-rose-400 border-rose-500/40');
+                            return `
+                                <div class="p-2.5 bg-slate-950 border border-slate-800 rounded-xl flex justify-between items-center text-xs">
+                                    <div class="space-y-0.5">
+                                        <div class="font-bold text-slate-200">#${idx + 1} ${c.dpName}</div>
+                                        <div class="text-[10px] font-mono text-slate-400">
+                                            Distance: <strong class="${c.isWithin500m ? 'text-emerald-400' : 'text-rose-400'}">${Math.round(c.distMeters)}m</strong> 
+                                        </div>
+                                    </div>
+                                    <div class="text-right space-y-1">
+                                        <div class="font-mono text-[10px]">
+                                            Avail: <strong class="${c.availPorts > 0 ? 'text-emerald-400' : 'text-rose-400'}">${c.availPorts}</strong> / ${c.totalCap}
+                                        </div>
+                                        <span class="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border ${badgeColor}">
+                                            ${c.isServiced ? 'Eligible' : (c.isWithin500m ? 'No Ports' : '> 500m')}
+                                        </span>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+
+            try { lucide.createIcons(); } catch(e) {}
+        }
+
+        /* INSIGHTS MODAL ENGINE WITH GEOGRAPHIC UNIQUE AGGREGATIONS */
         function openInsightsModal() {
             computeAndRenderInsights();
             document.getElementById('insights-modal').classList.remove('hidden');
@@ -1149,9 +1642,15 @@
             document.getElementById('insights-modal').classList.add('hidden');
         }
 
+        function onInsightsGroupChange(val) {
+            currentModalGroupBy = val;
+            computeAndRenderInsights();
+        }
+
         function computeAndRenderInsights() {
             const filteredRows = rawCombinedRows.filter(r => isRowMatchingFilters(r, modalFilters));
             const techMap = {};
+            const groupMap = {};
 
             filteredRows.forEach(row => {
                 const keys = Object.keys(row);
@@ -1173,19 +1672,43 @@
                 const totalLinesRaw = getValue(['TOTAL LINES', 'TOTAL_LINES', 'TOTAL LINE', 'CAPACITY', 'TOTAL PORTS', 'TOTAL'], ['TOTAL', 'CAPACITY', 'PORTS']);
                 const techVal = extractTechVal(row);
 
+                const provVal = String(getRowVal(row, ['PROVINCE_NAME', 'PROVINCE'], ['PROVINCE']) || 'UNASSIGNED').trim();
+                const townVal = String(getRowVal(row, ['CITY_NAME', 'TOWN', 'CITY'], ['CITY', 'TOWN']) || 'UNASSIGNED').trim();
+                const brgyVal = String(getRowVal(row, ['BRGY_NAME', 'BARANGAY'], ['BRGY', 'BARANGAY']) || 'UNASSIGNED').trim();
+                const salesVal = String(getRowVal(row, ['SALES_AREA', 'SALES AREA'], ['SALES']) || 'UNASSIGNED').trim();
+
                 const woVal = !isNaN(parseNum(woLinesRaw)) ? parseNum(woLinesRaw) : 0;
                 const totalVal = !isNaN(parseNum(totalLinesRaw)) ? parseNum(totalLinesRaw) : 0;
 
+                // Top Overview Cards (per technology)
                 if (!techMap[techVal]) {
                     techMap[techVal] = { tech: techVal, recCount: 0, woLines: 0, totalLines: 0 };
                 }
-
                 techMap[techVal].recCount++;
                 techMap[techVal].woLines += woVal;
                 techMap[techVal].totalLines += totalVal;
+
+                // Group-By Aggregation Key Builder
+                let groupKey = 'N/A';
+                if (currentModalGroupBy === 'sales') {
+                    groupKey = salesVal;
+                } else if (currentModalGroupBy === 'town') {
+                    groupKey = provVal !== 'UNASSIGNED' ? `${townVal}, ${provVal}` : townVal;
+                } else if (currentModalGroupBy === 'province') {
+                    groupKey = provVal;
+                } else if (currentModalGroupBy === 'brgy') {
+                    groupKey = townVal !== 'UNASSIGNED' ? `${brgyVal}, ${townVal}` : brgyVal;
+                }
+
+                if (!groupMap[groupKey]) {
+                    groupMap[groupKey] = { key: groupKey, recCount: 0, woLines: 0, totalLines: 0 };
+                }
+                groupMap[groupKey].recCount++;
+                groupMap[groupKey].woLines += woVal;
+                groupMap[groupKey].totalLines += totalVal;
             });
 
-            // Update Header Summary
+            // Summary Header Context
             const activeFilterNames = [];
             if (modalFilters.tech.size > 0) activeFilterNames.push(`${modalFilters.tech.size} Techs`);
             if (modalFilters.province.size > 0) activeFilterNames.push(`${modalFilters.province.size} Prov`);
@@ -1198,20 +1721,22 @@
 
             const cardsContainer = document.getElementById('tech-summary-cards');
             const tbody = document.getElementById('tech-matrix-tbody');
+            const colHeader = document.getElementById('matrix-col-header');
 
             cardsContainer.innerHTML = '';
             tbody.innerHTML = '';
 
-            const techKeys = Object.keys(techMap).sort();
+            const columnNames = {
+                sales: 'Sales Area',
+                town: 'Town / City (Town, Province)',
+                province: 'Province',
+                brgy: 'Barangay (Barangay, Town)'
+            };
+            if (colHeader) colHeader.innerText = columnNames[currentModalGroupBy] || 'Location Entity';
 
-            if (techKeys.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-500">No records found matching current modal filters.</td></tr>`;
-                return;
-            }
-
-            techKeys.forEach(tech => {
+            // Render Tech Overview Cards
+            Object.keys(techMap).sort().forEach(tech => {
                 const item = techMap[tech];
-                const availPorts = Math.max(0, item.totalLines - item.woLines);
                 const utilPct = item.totalLines > 0 ? ((item.woLines / item.totalLines) * 100).toFixed(1) : '0.0';
                 const color = getDPColor(item.totalLines > 0 ? (item.woLines / item.totalLines) : 0);
 
@@ -1227,10 +1752,24 @@
                         </div>
                     </div>
                 `;
+            });
+
+            // Render Aggregation Matrix Rows
+            const sortedGroupKeys = Object.keys(groupMap).sort();
+            if (sortedGroupKeys.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-500">No records found matching current modal filters.</td></tr>`;
+                return;
+            }
+
+            sortedGroupKeys.forEach(key => {
+                const item = groupMap[key];
+                const availPorts = Math.max(0, item.totalLines - item.woLines);
+                const utilPct = item.totalLines > 0 ? ((item.woLines / item.totalLines) * 100).toFixed(1) : '0.0';
+                const color = getDPColor(item.totalLines > 0 ? (item.woLines / item.totalLines) : 0);
 
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-900/60 transition">
-                        <td class="p-3 font-bold text-amber-400">${item.tech}</td>
+                        <td class="p-3 font-bold text-amber-400">${item.key}</td>
                         <td class="p-3 text-right font-mono">${item.recCount.toLocaleString()}</td>
                         <td class="p-3 text-right font-mono text-emerald-400">${item.woLines.toLocaleString()}</td>
                         <td class="p-3 text-right font-mono text-slate-200">${item.totalLines.toLocaleString()}</td>
