@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NAP, DP & Cabinet Utilization Map - Cagayan de Oro City</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { brand: { 50: '#f0f7ff', 500: '#3b82f6', 600: '#2563eb', 900: '#1e3a8a' } } } }
+        }
+    </script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        html:not(.dark) .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        .glass-card { backdrop-filter: blur(12px); }
+        .dark .glass-card { background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255, 255, 255, 0.12); color: #f8fafc; }
+        html:not(.dark) .glass-card { background: rgba(255, 255, 255, 0.98); border: 1px solid rgba(0, 0, 0, 0.15); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12); color: #0f172a; }
+
+        .leaflet-container { font-family: system-ui, -apple-system, sans-serif !important; background-color: #020617 !important; }
+        .leaflet-tooltip.clickable-tooltip { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; pointer-events: auto !important; z-index: 9999 !important; }
+
+        .cabinet-icon-wrapper { background: #8b5cf6; border: none; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 0 10px rgba(139, 92, 246, 0.9); cursor: pointer; }
+        .cabinet-icon-wrapper.active-cab { background: #f59e0b; box-shadow: 0 0 20px rgba(245, 158, 11, 1); transform: scale(1.3); transition: transform 0.15s ease; }
+
+        .dp-aura-ring {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(245, 158, 11, 0.35);
+            border: 2px solid #f59e0b;
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.9);
+            animation: pulse-aura 1.5s infinite ease-in-out;
+            pointer-events: none;
+            will-change: transform, opacity;
+        }
+
+        @keyframes pulse-aura {
+            0% { transform: scale(0.8); opacity: 0.8; }
+            50% { transform: scale(1.3); opacity: 0.4; }
+            100% { transform: scale(0.8); opacity: 0.8; }
+        }
+
+        .sidebar-collapsed { margin-left: -20rem !important; }
+        @media (min-width: 640px) { .sidebar-collapsed { margin-left: -24rem !important; } }
+    </style>
+</head>
+
+<body class="h-full flex flex-col font-sans antialiased bg-slate-950 text-slate-100 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200 overflow-hidden">
+
+    <header class="h-14 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur sticky top-0 z-30 px-4 flex items-center justify-between shrink-0 transition-colors">
+        <div class="flex items-center gap-3">
+            <button id="toggle-sidebar-btn" onclick="toggleSidebar()" class="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg border border-slate-300 dark:border-slate-700 transition" title="Toggle Sidebar">
+                <i data-lucide="panel-left" class="w-4 h-4"></i>
+            </button>
+            <div class="flex items-center gap-2">
+                <div class="p-1.5 bg-blue-600/20 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-500/30">
+                    <i data-lucide="map-pin" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-sm sm:text-base text-slate-900 dark:text-white leading-tight">NAP, DP & Cabinet Geospatial Deck</h1>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 flex-wrap">
+                        <span>Default Focus: <strong class="text-amber-400">Cagayan de Oro City</strong></span>
+                        <span class="inline-block w-1 h-1 rounded-full bg-slate-400 dark:bg-slate-600"></span>
+                        <span id="sync-status" class="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Connecting to Google Sheets...
+                        </span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3 text-xs font-semibold">
+            <!-- Header Layer Toggles -->
+            <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <label class="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold">
+                    <input type="checkbox" id="hdr-chk-dp" checked onchange="toggleDpLayer(this.checked)" class="rounded bg-slate-200 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-blue-600">
+                    <span class="text-blue-400">Show DPs</span>
+                </label>
+                <span class="text-slate-600">|</span>
+                <label class="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold">
+                    <input type="checkbox" id="hdr-chk-cab" checked onchange="toggleCabinetLayer(this.checked)" class="rounded bg-slate-200 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-purple-600">
+                    <span class="text-purple-400">Show Cabinets</span>
+                </label>
+            </div>
+
+            <!-- Heatmap Legend -->
+            <div class="hidden lg:flex items-center gap-3 bg-slate-100 dark:bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <span class="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">DP Util:</span>
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> 90-100%</span>
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> 50-89%</span>
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> &lt;50%</span>
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> 0%</span>
+            </div>
+
+            <button onclick="clearCabinetSelection()" id="btn-clear-selection" class="hidden px-2.5 py-1.5 text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition flex items-center gap-1.5 shadow-sm">
+                <i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Clear Cabinet Highlight
+            </button>
+
+            <button onclick="toggleTheme()" class="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-amber-500 dark:text-amber-300 rounded-lg border border-slate-300 dark:border-slate-700 transition flex items-center gap-1.5">
+                <i id="theme-icon" data-lucide="sun" class="w-4 h-4"></i>
+            </button>
+
+            <button onclick="fetchSheetData()" class="px-2.5 py-1.5 text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg border border-slate-300 dark:border-slate-700 transition flex items-center gap-1.5">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Sync Sheets</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden relative">
+        <aside id="sidebar-deck" class="w-80 sm:w-96 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col z-20 shrink-0 transition-all duration-300 custom-scrollbar overflow-y-auto">
+            <div class="p-4 space-y-5">
+                <div class="space-y-3">
+                    <div class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <i data-lucide="eye" class="w-4 h-4 text-emerald-500"></i> Layer Visibility Toggles
+                    </div>
+                    <div class="p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2 text-xs">
+                        <label class="flex items-center justify-between cursor-pointer p-1 hover:bg-slate-900/50 rounded transition">
+                            <span class="font-bold text-blue-400">Show DP / NAP Pins</span>
+                            <input type="checkbox" id="side-chk-dp" checked onchange="toggleDpLayer(this.checked)" class="rounded bg-slate-200 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-blue-600">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer p-1 hover:bg-slate-900/50 rounded transition border-t border-slate-800/80 pt-2">
+                            <span class="font-bold text-purple-400">Show Cabinet Pins</span>
+                            <input type="checkbox" id="side-chk-cab" checked onchange="toggleCabinetLayer(this.checked)" class="rounded bg-slate-200 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-purple-600">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <i data-lucide="database" class="w-4 h-4 text-blue-500"></i> Sheet Records Loaded
+                    </div>
+                    <div class="p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2 text-xs">
+                        <div class="flex justify-between"><span>DP,NAP Utilization:</span> <strong id="cnt-sheet1" class="text-blue-500">0</strong></div>
+                        <div class="flex justify-between"><span>Corp_SG_DP,NAP Util:</span> <strong id="cnt-sheet2" class="text-purple-500">0</strong></div>
+                        <div class="flex justify-between"><span>ODN EXTENSION:</span> <strong id="cnt-sheet3" class="text-teal-500">0</strong></div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <i data-lucide="layers" class="w-4 h-4 text-purple-500"></i> Plotted Unique Entities
+                    </div>
+                    <div class="p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2 text-xs">
+                        <div class="flex justify-between"><span>Unique DPs Plotted:</span> <strong id="cnt-unique-dp" class="text-emerald-500">0</strong></div>
+                        <div class="flex justify-between"><span>Unique Cabinets Plotted:</span> <strong id="cnt-unique-cab" class="text-purple-400">0</strong></div>
+                        <div class="flex justify-between border-t border-slate-800 pt-1 mt-1"><span>Multi-Box DP Locations:</span> <strong id="cnt-stacked-dp" class="text-amber-400">0</strong></div>
+                    </div>
+                </div>
+
+                <div id="cabinet-inspector" class="p-3 bg-slate-950 border border-purple-500/40 rounded-xl space-y-2 text-xs hidden">
+                    <div class="font-bold text-purple-400 flex items-center gap-1.5 border-b border-slate-800 pb-1.5">
+                        <i data-lucide="box" class="w-4 h-4"></i> Active Selected Cabinet
+                    </div>
+                    <div id="cab-inspector-content" class="space-y-1"></div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex-1 relative flex flex-col h-full bg-slate-100 dark:bg-slate-950 overflow-hidden">
+            <div id="map" class="flex-1 w-full h-full z-0"></div>
+        </main>
+    </div>
+
+    <script>
+        const SHEET_1_URL = 'https://script.google.com/macros/s/AKfycbz8I-Fw3exKkvDcX_sLFQ9YH5aj4HvCZtjw_mLr3kAwVBguTMlSdItjOgbeIulVbA1dlw/exec?sheet=DP%2CNAP%20Utilization';
+        const SHEET_2_URL = 'https://script.google.com/macros/s/AKfycbz8I-Fw3exKkvDcX_sLFQ9YH5aj4HvCZtjw_mLr3kAwVBguTMlSdItjOgbeIulVbA1dlw/exec?sheet=Corp_SG_DP%2CNAP%20Utilization';
+        const SHEET_3_URL = 'https://script.google.com/macros/s/AKfycbz8I-Fw3exKkvDcX_sLFQ9YH5aj4HvCZtjw_mLr3kAwVBguTMlSdItjOgbeIulVbA1dlw/exec?sheet=ODN%20EXTENSION%20SOURCE%20NAPS';
+
+        const CDO_LAT = 8.4542;
+        const CDO_LON = 124.6319;
+
+        let map = null;
+        let activeTileLayer = null;
+        let svgRenderer = null;
+        let dpLayerGroup = null;
+        let cabinetLayerGroup = null;
+        let auraLayerGroup = null;
+
+        let dpRegistry = {};
+        let cabinetRegistry = {};
+        let dpMarkerMap = {};
+        let cabinetMarkerMap = {};
+
+        let selectedCabinetKey = null;
+        let activeTooltip = null;
+        let isDpVisible = true;
+        let isCabinetVisible = true;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            try { lucide.createIcons(); } catch(e) {}
+            initMap();
+            fetchSheetData();
+        });
+
+        function initMap() {
+            svgRenderer = L.svg({ padding: 0.5 });
+            map = L.map('map', { center: [CDO_LAT, CDO_LON], zoom: 13, zoomControl: false });
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+            activeTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+
+            auraLayerGroup = L.featureGroup().addTo(map);
+            dpLayerGroup = L.featureGroup().addTo(map);
+            cabinetLayerGroup = L.featureGroup().addTo(map);
+
+            map.on('click', (e) => {
+                if (e.originalEvent && e.originalEvent.target && e.originalEvent.target.classList.contains('leaflet-container')) {
+                    clearCabinetSelection();
+                    closeActiveTooltip();
+                }
+            });
+        }
+
+        function closeActiveTooltip() {
+            if (activeTooltip) {
+                map.closeTooltip(activeTooltip);
+                activeTooltip = null;
+            }
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar-deck').classList.toggle('sidebar-collapsed');
+            setTimeout(() => { if (map) map.invalidateSize(); }, 300);
+        }
+
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            if (activeTileLayer) map.removeLayer(activeTileLayer);
+            const isDark = document.documentElement.classList.contains('dark');
+            const tileUrl = isDark 
+                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+            activeTileLayer = L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(map);
+        }
+
+        function toggleDpLayer(show) {
+            isDpVisible = show;
+            document.getElementById('hdr-chk-dp').checked = show;
+            document.getElementById('side-chk-dp').checked = show;
+
+            if (show) {
+                if (!map.hasLayer(dpLayerGroup)) map.addLayer(dpLayerGroup);
+            } else {
+                if (map.hasLayer(dpLayerGroup) && !selectedCabinetKey) map.removeLayer(dpLayerGroup);
+            }
+        }
+
+        function toggleCabinetLayer(show) {
+            isCabinetVisible = show;
+            document.getElementById('hdr-chk-cab').checked = show;
+            document.getElementById('side-chk-cab').checked = show;
+
+            if (show) {
+                if (!map.hasLayer(cabinetLayerGroup)) map.addLayer(cabinetLayerGroup);
+            } else {
+                if (map.hasLayer(cabinetLayerGroup)) map.removeLayer(cabinetLayerGroup);
+            }
+        }
+
+        async function fetchWithTimeout(url, timeoutMs = 30000) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const res = await fetch(url, { signal: controller.signal });
+                clearTimeout(id);
+                if (res && res.ok) {
+                    const text = await res.text();
+                    if (text && text.length > 10 && !text.includes('<!DOCTYPE html>')) return text;
+                }
+            } catch (e) { clearTimeout(id); }
+            return null;
+        }
+
+        async function fetchSheetData() {
+            const syncStatus = document.getElementById('sync-status');
+            if (syncStatus) syncStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Syncing Google Sheets...';
+
+            const corsProxy = 'https://corsproxy.io/?';
+            const getCsv = async (targetUrl) => {
+                let res = await fetchWithTimeout(targetUrl, 25000);
+                if (!res) res = await fetchWithTimeout(corsProxy + encodeURIComponent(targetUrl), 25000);
+                return res ? Papa.parse(res, { header: true, skipEmptyLines: true }).data || [] : [];
+            };
+
+            const [data1, data2, data3] = await Promise.all([
+                getCsv(SHEET_1_URL),
+                getCsv(SHEET_2_URL),
+                getCsv(SHEET_3_URL)
+            ]);
+
+            document.getElementById('cnt-sheet1').innerText = data1.length.toLocaleString();
+            document.getElementById('cnt-sheet2').innerText = data2.length.toLocaleString();
+            document.getElementById('cnt-sheet3').innerText = data3.length.toLocaleString();
+
+            const combinedDataset = [...data1, ...data2, ...data3];
+            processAndPlotEntities(combinedDataset);
+
+            if (syncStatus) {
+                syncStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Synced ${combinedDataset.length.toLocaleString()} Total Records`;
+            }
+        }
+
+        function getDPColor(utilDecimal) {
+            if (isNaN(utilDecimal) || utilDecimal === 0) return '#3b82f6';
+            if (utilDecimal < 0.5) return '#10b981';
+            if (utilDecimal < 0.9) return '#f59e0b';
+            return '#ef4444';
+        }
+
+        function parseNum(val) {
+            if (val === null || val === undefined) return NaN;
+            const cleaned = String(val).replace(/[^0-9.-]/g, '');
+            const parsed = parseFloat(cleaned);
+            return isNaN(parsed) ? NaN : parsed;
+        }
+
+        function processAndPlotEntities(rows) {
+            dpLayerGroup.clearLayers();
+            cabinetLayerGroup.clearLayers();
+            auraLayerGroup.clearLayers();
+
+            dpRegistry = {};
+            cabinetRegistry = {};
+            dpMarkerMap = {};
+            cabinetMarkerMap = {};
+            selectedCabinetKey = null;
+
+            document.getElementById('btn-clear-selection').classList.add('hidden');
+            document.getElementById('cabinet-inspector').classList.add('hidden');
+
+            if (!rows || rows.length === 0) return;
+
+            let stackedDpCount = 0;
+
+            rows.forEach((row, idx) => {
+                const keys = Object.keys(row);
+
+                const getValue = (exactCandidates, fuzzyKeywords) => {
+                    for (const candidate of exactCandidates) {
+                        const foundKey = keys.find(k => k.trim().toUpperCase() === candidate.toUpperCase());
+                        if (foundKey && row[foundKey] !== undefined && row[foundKey] !== '') {
+                            return row[foundKey];
+                        }
+                    }
+                    if (fuzzyKeywords && fuzzyKeywords.length > 0) {
+                        for (const kw of fuzzyKeywords) {
+                            const foundKey = keys.find(k => k.trim().toUpperCase().includes(kw.toUpperCase()));
+                            if (foundKey && row[foundKey] !== undefined && row[foundKey] !== '') {
+                                return row[foundKey];
+                            }
+                        }
+                    }
+                    return null;
+                };
+
+                const dpLat = parseNum(getValue(['DP/NAP LAT', 'DP LAT', 'NAP LAT', 'DPLAT'], ['LATITUDE', 'LAT']));
+                const dpLon = parseNum(getValue(['DP/NAP LONG', 'DP LONG', 'NAP LONG', 'DP/NAP LON', 'DPLONG', 'DPLON'], ['LONGITUDE', 'LONG', 'LON', 'LNG']));
+
+                const dpName = getValue([
+                    'DP', 'DP NAME', 'DP/NAP NAME', 'NAP NAME', 'DP_NAME', 'NAP_NAME', 
+                    'DP ID', 'NAP ID', 'DP_ID', 'NAP_ID', 'DP/NAP ID', 'NAP'
+                ], []) || `DP #${idx + 1}`;
+
+                const utilRaw = getValue(['UTILIZATION', 'UTIL %', 'UTILIZATION %', 'UTIL'], ['UTIL']);
+                const woLinesRaw = getValue(['WO LINES', 'WORKING LINES', 'WO_LINES', 'WO LINE', 'WORKING LINE', 'ASSIGNED LINES', 'USED PORTS', 'USED'], ['WO', 'WORKING', 'ASSIGNED', 'USED']);
+                const totalLinesRaw = getValue(['TOTAL LINES', 'TOTAL_LINES', 'TOTAL LINE', 'CAPACITY', 'TOTAL PORTS', 'TOTAL'], ['TOTAL', 'CAPACITY', 'PORTS']);
+
+                const techVal = getValue([
+                    'TECH', 'TECHNOLOGY', 'ODN TECH', 'NET TECH', 'TECH TYPE', 
+                    'PLANNED TECH', 'PSOW TECH', 'TECHNOLOGY TYPE'
+                ], ['TECH']) || 'GPON';
+
+                const cabLat = parseNum(getValue(['CAB LAT', 'CABINET LAT', 'CABINET LATITUDE', 'CABLAT'], ['CAB']));
+                const cabLon = parseNum(getValue(['CAB LONG', 'CABINET LONG', 'CABINET LONGITUDE', 'CAB LON', 'CABLONG', 'CABLON'], ['CAB']));
+                const cabName = getValue(['CAB NAME', 'CABINET NAME', 'CAB ID', 'CABINET ID'], ['CABINET', 'CAB']) || 'Cabinet Unit';
+
+                const woVal = !isNaN(parseNum(woLinesRaw)) ? parseNum(woLinesRaw) : 0;
+                const totalVal = !isNaN(parseNum(totalLinesRaw)) ? parseNum(totalLinesRaw) : 0;
+
+                let cabKey = null;
+                if (!isNaN(cabLat) && !isNaN(cabLon) && cabLat !== 0 && cabLon !== 0) {
+                    cabKey = `CAB_${cabLat.toFixed(6)},${cabLon.toFixed(6)}`;
+                    if (!cabinetRegistry[cabKey]) {
+                        cabinetRegistry[cabKey] = {
+                            key: cabKey,
+                            lat: cabLat,
+                            lon: cabLon,
+                            cabName: cabName,
+                            childDpKeys: new Set()
+                        };
+                    }
+                }
+
+                if (!isNaN(dpLat) && !isNaN(dpLon) && dpLat !== 0 && dpLon !== 0) {
+                    const dpKey = `DP_${dpLat.toFixed(6)},${dpLon.toFixed(6)}`;
+
+                    if (!dpRegistry[dpKey]) {
+                        dpRegistry[dpKey] = {
+                            key: dpKey,
+                            lat: dpLat,
+                            lon: dpLon,
+                            dpName: dpName,
+                            parentCabKey: cabKey,
+                            boxes: []
+                        };
+                    } else {
+                        stackedDpCount++;
+                    }
+
+                    dpRegistry[dpKey].boxes.push({
+                        boxName: dpName,
+                        woLines: woVal,
+                        totalLines: totalVal,
+                        utilRaw: utilRaw,
+                        tech: techVal
+                    });
+
+                    if (cabKey && cabinetRegistry[cabKey]) {
+                        cabinetRegistry[cabKey].childDpKeys.add(dpKey);
+                    }
+                }
+            });
+
+            // Plot ALL Unique DPs as Circle Markers
+            Object.values(dpRegistry).forEach(dp => {
+                let sumWo = 0;
+                let sumTotal = 0;
+
+                dp.boxes.forEach(b => {
+                    sumWo += b.woLines;
+                    sumTotal += b.totalLines;
+                });
+
+                let blendedUtil = sumTotal > 0 ? (sumWo / sumTotal) : 0;
+                if (sumTotal === 0 && dp.boxes.length > 0 && dp.boxes[0].utilRaw) {
+                    let parsedUtil = parseNum(dp.boxes[0].utilRaw);
+                    if (!isNaN(parsedUtil)) {
+                        blendedUtil = parsedUtil > 1 ? parsedUtil / 100 : parsedUtil;
+                    }
+                }
+
+                const dpColor = getDPColor(blendedUtil);
+
+                const dpMarker = L.circleMarker([dp.lat, dp.lon], {
+                    radius: dp.boxes.length > 1 ? 8 : 6.5,
+                    fillColor: dpColor,
+                    stroke: false,
+                    weight: 0,
+                    fillOpacity: 1.0,
+                    interactive: true,
+                    renderer: svgRenderer
+                });
+
+                // Tooltip Opens STRICTLY ON CLICK
+                dpMarker.on('click', (e) => {
+                    L.DomEvent.stopPropagation(e);
+                    closeActiveTooltip();
+
+                    let boxRowsHtml = dp.boxes.map((b, idx) => {
+                        let bUtilPct = b.totalLines > 0 ? ((b.woLines / b.totalLines) * 100).toFixed(1) + '%' : (b.utilRaw || '0%');
+                        let bUtilDec = b.totalLines > 0 ? (b.woLines / b.totalLines) : parseNum(b.utilRaw);
+                        if (bUtilDec > 1) bUtilDec /= 100;
+
+                        return `
+                            <div class="p-1.5 rounded bg-slate-900/80 border border-slate-800 space-y-0.5">
+                                <div class="flex justify-between items-center text-[11px] font-bold">
+                                    <span class="text-slate-300">DP Box: ${b.boxName}</span>
+                                    <span class="px-1 rounded text-[10px]" style="color:${getDPColor(bUtilDec)}">${bUtilPct}</span>
+                                </div>
+                                <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+                                    <span>Tech: <strong class="text-amber-400">${b.tech}</strong></span>
+                                    <span>WO: ${b.woLines} / Tot: ${b.totalLines}</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    const tooltipContent = `
+                        <div class="glass-card p-2.5 rounded-lg shadow-xl text-xs font-sans min-w-[200px] max-w-xs space-y-1.5">
+                            <div class="font-bold text-blue-400 border-b border-slate-700/80 pb-1 flex items-center justify-between">
+                                <span>📍 DP Name: ${dp.dpName}</span>
+                                <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${dpColor};"></span>
+                            </div>
+                            ${dp.boxes.length > 1 ? `<div class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold text-[10px] border border-amber-500/40 text-center">Multiple DPs at this Location (${dp.boxes.length} Boxes)</div>` : ''}
+                            <div class="space-y-1 pt-1">
+                                <div class="flex justify-between"><span>Combined WO Lines:</span><strong class="font-mono text-emerald-400">${sumWo}</strong></div>
+                                <div class="flex justify-between"><span>Combined Total Lines:</span><strong class="font-mono text-slate-200">${sumTotal}</strong></div>
+                                <div class="flex justify-between"><span>Overall DP Util:</span><strong class="font-mono" style="color:${dpColor}">${(blendedUtil * 100).toFixed(1)}%</strong></div>
+                            </div>
+                            <div class="space-y-1 pt-1.5 border-t border-slate-800">
+                                <div class="text-[10px] uppercase font-bold text-slate-400">DP Box Breakdown:</div>
+                                ${boxRowsHtml}
+                            </div>
+                        </div>
+                    `;
+
+                    activeTooltip = L.tooltip({ className: 'clickable-tooltip', direction: 'top' })
+                        .setLatLng([dp.lat, dp.lon])
+                        .setContent(tooltipContent)
+                        .openOn(map);
+                });
+
+                dpLayerGroup.addLayer(dpMarker);
+                dpMarkerMap[dp.key] = dpMarker;
+            });
+
+            // Plot Cabinet Square Markers
+            Object.values(cabinetRegistry).forEach(cab => {
+                const cabIcon = L.divIcon({
+                    className: 'custom-cabinet-icon',
+                    html: `<div id="cab-icon-${cab.key.replace(/[^a-zA-Z0-9]/g, '')}" class="cabinet-icon-wrapper w-5 h-5"><i data-lucide="box" class="w-3 h-3"></i></div>`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                });
+
+                const cabMarker = L.marker([cab.lat, cab.lon], { icon: cabIcon });
+
+                cabMarker.on('click', (e) => {
+                    L.DomEvent.stopPropagation(e);
+                    highlightCabinetConnections(cab.key);
+                });
+
+                cabinetLayerGroup.addLayer(cabMarker);
+                cabinetMarkerMap[cab.key] = cabMarker;
+            });
+
+            if (isDpVisible) map.addLayer(dpLayerGroup);
+            if (isCabinetVisible) map.addLayer(cabinetLayerGroup);
+            map.addLayer(auraLayerGroup);
+
+            document.getElementById('cnt-unique-dp').innerText = Object.keys(dpRegistry).length.toLocaleString();
+            document.getElementById('cnt-unique-cab').innerText = Object.keys(cabinetRegistry).length.toLocaleString();
+            document.getElementById('cnt-stacked-dp').innerText = stackedDpCount.toLocaleString();
+
+            try { lucide.createIcons(); } catch(e) {}
+        }
+
+        function highlightCabinetConnections(cabKey) {
+            clearCabinetSelection();
+            closeActiveTooltip();
+
+            const cab = cabinetRegistry[cabKey];
+            if (!cab) return;
+
+            selectedCabinetKey = cabKey;
+            document.getElementById('btn-clear-selection').classList.remove('hidden');
+
+            if (!map.hasLayer(dpLayerGroup)) {
+                map.addLayer(dpLayerGroup);
+            }
+
+            const iconEl = document.getElementById(`cab-icon-${cabKey.replace(/[^a-zA-Z0-9]/g, '')}`);
+            if (iconEl) iconEl.classList.add('active-cab');
+
+            let totalConnectedDps = cab.childDpKeys.size;
+            let totalCabWo = 0;
+            let totalCabLines = 0;
+
+            const cabBounds = [[cab.lat, cab.lon]];
+
+            cab.childDpKeys.forEach(dpKey => {
+                const dp = dpRegistry[dpKey];
+                if (dp) {
+                    cabBounds.push([dp.lat, dp.lon]);
+
+                    dp.boxes.forEach(b => {
+                        totalCabWo += b.woLines;
+                        totalCabLines += b.totalLines;
+                    });
+
+                    const auraIcon = L.divIcon({
+                        className: 'custom-aura-icon',
+                        html: `<div class="dp-aura-ring"></div>`,
+                        iconSize: [28, 28],
+                        iconAnchor: [14, 14]
+                    });
+
+                    L.marker([dp.lat, dp.lon], { icon: auraIcon, zIndexOffset: -100 }).addTo(auraLayerGroup);
+                }
+            });
+
+            const cabUtilPct = totalCabLines > 0 ? ((totalCabWo / totalCabLines) * 100).toFixed(1) : '0.0';
+
+            const inspectorEl = document.getElementById('cabinet-inspector');
+            const inspectorContent = document.getElementById('cab-inspector-content');
+
+            if (inspectorEl && inspectorContent) {
+                inspectorEl.classList.remove('hidden');
+                inspectorContent.innerHTML = `
+                    <div class="font-bold text-slate-200 text-sm truncate">${cab.cabName}</div>
+                    <div class="flex justify-between"><span>Connected DPs:</span><strong class="font-mono text-purple-400">${totalConnectedDps}</strong></div>
+                    <div class="flex justify-between"><span>Total WO Lines:</span><strong class="font-mono text-emerald-400">${totalCabWo}</strong></div>
+                    <div class="flex justify-between"><span>Total Line Capacity:</span><strong class="font-mono text-slate-200">${totalCabLines}</strong></div>
+                    <div class="flex justify-between border-t border-slate-800 pt-1 mt-1"><span>Cabinet Util %:</span><strong class="font-mono text-amber-400">${cabUtilPct}%</strong></div>
+                `;
+            }
+
+            const tooltipHtml = `
+                <div class="glass-card p-3 rounded-lg shadow-2xl text-xs font-sans min-w-[210px] space-y-1.5 border border-purple-500/80">
+                    <div class="font-bold text-purple-400 border-b border-slate-700/80 pb-1 flex items-center justify-between">
+                        <span>🗄️ Cabinet: ${cab.cabName}</span>
+                    </div>
+                    <div class="space-y-1 text-[11px]">
+                        <div class="flex justify-between"><span>Connected DPs:</span><strong class="font-mono text-purple-300">${totalConnectedDps}</strong></div>
+                        <div class="flex justify-between"><span>Sum WO Lines:</span><strong class="font-mono text-emerald-400">${totalCabWo}</strong></div>
+                        <div class="flex justify-between"><span>Sum Total Lines:</span><strong class="font-mono text-slate-200">${totalCabLines}</strong></div>
+                        <div class="flex justify-between border-t border-slate-800 pt-1 font-bold"><span>Blended Cabinet Util:</span><strong class="font-mono text-amber-400">${cabUtilPct}%</strong></div>
+                    </div>
+                </div>
+            `;
+
+            activeTooltip = L.tooltip({ className: 'clickable-tooltip', direction: 'top' })
+                .setLatLng([cab.lat, cab.lon])
+                .setContent(tooltipHtml)
+                .openOn(map);
+
+            if (cabBounds.length > 1) {
+                map.fitBounds(cabBounds, { padding: [80, 80], maxZoom: 16 });
+            }
+        }
+
+        function clearCabinetSelection() {
+            selectedCabinetKey = null;
+            auraLayerGroup.clearLayers();
+            closeActiveTooltip();
+            document.getElementById('btn-clear-selection').classList.add('hidden');
+            document.getElementById('cabinet-inspector').classList.add('hidden');
+
+            document.querySelectorAll('.cabinet-icon-wrapper').forEach(el => el.classList.remove('active-cab'));
+
+            if (!isDpVisible && map.hasLayer(dpLayerGroup)) {
+                map.removeLayer(dpLayerGroup);
+            }
+        }
+    </script>
+</body>
+</html>
