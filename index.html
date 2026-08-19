@@ -572,6 +572,7 @@
     </div>
 
     <script>
+        const BASE_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbz8I-Fw3exKkvDcX_sLFQ9YH5aj4HvCZtjw_mLr3kAwVBguTMlSdItjOgbeIulVbA1dlw/exec';
         const SHEET_1_URL = 'https://script.google.com/macros/s/AKfycbz8I-Fw3exKkvDcX_sLFQ9YH5aj4HvCZtjw_mLr3kAwVBguTMlSdItjOgbeIulVbA1dlw/exec?sheet=DP%2CNAP%20Utilization';
         const SHEET_2_URL = 'https://script.google.com/macros/s/AKfycbz8I-Fw3exKkvDcX_sLFQ9YH5aj4HvCZtjw_mLr3kAwVBguTMlSdItjOgbeIulVbA1dlw/exec?sheet=Corp_SG_DP%2CNAP%20Utilization';
         const SHEET_3_URL = 'https://script.google.com/macros/s/AKfycbz8I-Fw3exKkvDcX_sLFQ9YH5aj4HvCZtjw_mLr3kAwVBguTMlSdItjOgbeIulVbA1dlw/exec?sheet=ODN%20EXTENSION%20SOURCE%20NAPS';
@@ -735,28 +736,88 @@
             }
         }
 
+        /* CLIENT-SIDE CORS & HYBRID FETCH ENGINE FOR GITHUB PAGES & PYTHON BACKEND */
+        async function fetchJsonDirect(url) {
+            try {
+                const res = await fetch(url);
+                if (res.ok) {
+                    const text = await res.text();
+                    if (text && text.trim().startsWith('[')) {
+                        return JSON.parse(text);
+                    }
+                }
+            } catch (e) {}
+
+            try {
+                const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+                const res = await fetch(proxyUrl);
+                if (res.ok) {
+                    const text = await res.text();
+                    if (text && text.trim().startsWith('[')) {
+                        return JSON.parse(text);
+                    }
+                }
+            } catch (e) {}
+            return [];
+        }
+
+        async function fetchSheetPaginated(baseUrl, batchSize = 5000) {
+            let allRecords = [];
+            const firstBatch = await fetchJsonDirect(`${baseUrl}&offset=0&limit=${batchSize}`);
+
+            if (!firstBatch || firstBatch.length === 0) {
+                const directData = await fetchJsonDirect(baseUrl);
+                return directData || [];
+            }
+
+            allRecords = allRecords.concat(firstBatch);
+            if (firstBatch.length < batchSize) return allRecords;
+
+            let offset = batchSize;
+            while (offset < 35000) {
+                const chunk = await fetchJsonDirect(`${baseUrl}&offset=${offset}&limit=${batchSize}`);
+                if (chunk && chunk.length > 0) {
+                    allRecords = allRecords.concat(chunk);
+                    if (chunk.length < batchSize) break;
+                    offset += batchSize;
+                } else {
+                    break;
+                }
+            }
+
+            return allRecords;
+        }
+
         async function fetchSheetData() {
             const syncStatus = document.getElementById('sync-status');
             if (syncStatus) syncStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Syncing Google Sheets JSON...';
 
-            const getJson = async (endpoint) => {
-                try {
-                    const res = await fetch(endpoint);
-                    if (res.ok) {
-                        const parsed = await res.json();
-                        return Array.isArray(parsed) ? parsed : [];
-                    }
-                } catch(e) {
-                    console.error("Fetch Error:", e);
-                }
-                return [];
-            };
+            const isLocalPythonEnv = window.location.protocol.startsWith('http') && 
+                                     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.'));
 
-            const [data1, data2, data3] = await Promise.all([
-                getJson('/api/sheet1'),
-                getJson('/api/sheet2'),
-                getJson('/api/sheet3')
-            ]);
+            let data1 = [], data2 = [], data3 = [];
+
+            if (isLocalPythonEnv) {
+                const fetchLocalApi = async (endpoint) => {
+                    try {
+                        const res = await fetch(endpoint);
+                        if (res.ok) return await res.json();
+                    } catch(e) {}
+                    return [];
+                };
+
+                [data1, data2, data3] = await Promise.all([
+                    fetchLocalApi('/api/sheet1'),
+                    fetchLocalApi('/api/sheet2'),
+                    fetchLocalApi('/api/sheet3')
+                ]);
+            } else {
+                [data1, data2, data3] = await Promise.all([
+                    fetchSheetPaginated(SHEET_1_URL),
+                    fetchSheetPaginated(SHEET_2_URL),
+                    fetchSheetPaginated(SHEET_3_URL)
+                ]);
+            }
 
             document.getElementById('cnt-sheet1').innerText = data1.length.toLocaleString();
             document.getElementById('cnt-sheet2').innerText = data2.length.toLocaleString();
