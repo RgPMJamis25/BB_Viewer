@@ -34,8 +34,8 @@
         .cabinet-icon-wrapper { background: #8b5cf6; border: none; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 0 10px rgba(139, 92, 246, 0.9); cursor: pointer; }
         .cabinet-icon-wrapper.active-cab { background: #f59e0b; box-shadow: 0 0 20px rgba(245, 158, 11, 1); transform: scale(1.3); transition: transform 0.15s ease; }
 
-        .target-pin-icon { background: #ef4444; border: 2px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 0 15px rgba(239, 68, 68, 1); animation: bounce-pin 1s infinite alternate; }
-        @keyframes bounce-pin { 0% { transform: translateY(0); } 100% { transform: translateY(-6px); } }
+        .target-pin-icon { background: #ef4444; border: 2px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 0 15px rgba(239, 68, 68, 1); cursor: grab; }
+        .target-pin-icon:active { cursor: grabbing; }
 
         .gps-arrow-icon {
             width: 0;
@@ -87,14 +87,13 @@
                         <span>Default Focus: <strong class="text-amber-400">Cagayan de Oro City</strong></span>
                         <span class="inline-block w-1 h-1 rounded-full bg-slate-400 dark:bg-slate-600"></span>
                         <span id="sync-status" class="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Connecting to Google Sheets...
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Connecting to Sheets Proxy...
                         </span>
                     </p>
                 </div>
             </div>
         </div>
 
-        <!-- Global Search Bar Engine -->
         <div class="hidden md:flex items-center relative w-72 lg:w-96">
             <div class="relative w-full">
                 <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
@@ -382,9 +381,14 @@
                         </div>
 
                         <div class="flex items-center justify-between pt-1 flex-wrap gap-2">
-                            <button onclick="enableSvcMapPinPicker()" class="px-2.5 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 font-bold rounded-lg border border-amber-500/40 transition flex items-center gap-1.5">
-                                <i data-lucide="crosshair" class="w-3.5 h-3.5"></i> Pin on Modal Map
-                            </button>
+                            <div class="flex gap-1.5 flex-wrap">
+                                <button onclick="enableSvcMapPinPicker()" class="px-2.5 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 font-bold rounded-lg border border-amber-500/40 transition flex items-center gap-1.5">
+                                    <i data-lucide="crosshair" class="w-3.5 h-3.5"></i> Pin on Modal Map
+                                </button>
+                                <button onclick="useCurrentLocationForServiceability()" class="px-2.5 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 font-bold rounded-lg border border-blue-500/40 transition flex items-center gap-1.5">
+                                    <i data-lucide="navigation" class="w-3.5 h-3.5"></i> Use My Current Location
+                                </button>
+                            </div>
                             <div class="flex gap-1.5">
                                 <button onclick="resetServiceability()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg border border-slate-700 transition">Reset</button>
                                 <button onclick="calculateServiceabilityFromInput()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition shadow">Run Check</button>
@@ -394,7 +398,7 @@
 
                     <div id="svc-results-container" class="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-3 text-xs">
                         <div class="text-center text-slate-500 py-12">
-                            Enter coordinates, search an address, or pin a point on the inspector map to evaluate GPON serviceability.
+                            Enter coordinates, search an address, use your current location, or drag/pin a point on the inspector map to evaluate GPON serviceability.
                         </div>
                     </div>
                 </div>
@@ -746,7 +750,6 @@
             return null;
         }
 
-        // ORIGINAL WORKING PARSER RESTORED (Prevents truncated 52-record limit)
         async function fetchSheetData() {
             const syncStatus = document.getElementById('sync-status');
             if (syncStatus) syncStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Syncing Google Sheets...';
@@ -1454,12 +1457,30 @@
             alert('Click anywhere on the modal inspector map to set your target location.');
         }
 
+        /* USE CURRENT LOCATION FOR SERVICEABILITY CHECKER */
+        function useCurrentLocationForServiceability() {
+            if (!navigator.geolocation) {
+                alert('Geolocation is not supported by your browser.');
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition((position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+
+                document.getElementById('svc-coord-input').value = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+                runServiceabilityCheck(lat, lon);
+            }, (error) => {
+                alert('Unable to retrieve your current location. Please check browser location permissions.');
+            }, { enableHighAccuracy: true, timeout: 10000 });
+        }
+
         function resetServiceability() {
             document.getElementById('svc-coord-input').value = '';
             document.getElementById('svc-address-input').value = '';
             document.getElementById('svc-results-container').innerHTML = `
                 <div class="text-center text-slate-500 py-12">
-                    Enter coordinates, search an address, or pin a point on the inspector map to evaluate GPON serviceability.
+                    Enter coordinates, search an address, use your current location, or drag/pin a point on the inspector map to evaluate GPON serviceability.
                 </div>
             `;
             if (serviceabilityLayerGroup) serviceabilityLayerGroup.clearLayers();
@@ -1542,14 +1563,21 @@
             const top5 = candidates.slice(0, 5);
             const isOverallServiceable = top5.some(c => c.isServiced);
 
-            // Render Target Pin on Serviceability Map
+            // Render Target Pin on Serviceability Map (DRAGGABLE)
             const pinIcon = L.divIcon({
                 className: 'custom-target-pin',
                 html: `<div class="target-pin-icon w-6 h-6"><i data-lucide="map-pin" class="w-4 h-4"></i></div>`,
                 iconSize: [24, 24],
                 iconAnchor: [12, 24]
             });
-            L.marker([targetLat, targetLon], { icon: pinIcon, zIndexOffset: 1000 }).addTo(serviceabilityLayerGroup);
+            const targetMarker = L.marker([targetLat, targetLon], { icon: pinIcon, draggable: true, zIndexOffset: 1000 }).addTo(serviceabilityLayerGroup);
+
+            // Re-evaluate on drag drop
+            targetMarker.on('dragend', function (event) {
+                const newPos = event.target.getLatLng();
+                document.getElementById('svc-coord-input').value = `${newPos.lat.toFixed(6)}, ${newPos.lng.toFixed(6)}`;
+                runServiceabilityCheck(newPos.lat, newPos.lng);
+            });
 
             L.circle([targetLat, targetLon], {
                 radius: 500,
@@ -1602,7 +1630,10 @@
                 </div>
 
                 <div class="space-y-2">
-                    <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Top 5 Nearest GPON DPs</h4>
+                    <div class="flex justify-between items-center">
+                        <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Top 5 Nearest GPON DPs</h4>
+                        <span class="text-[10px] text-amber-400 font-medium">💡 Drag red pin on map to adjust</span>
+                    </div>
                     <div class="space-y-2">
                         ${top5.map((c, idx) => {
                             const badgeColor = c.isServiced ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : (c.isWithin500m ? 'bg-amber-500/20 text-amber-400 border-amber-500/40' : 'bg-rose-500/20 text-rose-400 border-rose-500/40');
