@@ -15,7 +15,6 @@
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
@@ -87,7 +86,7 @@
                         <span>Default Focus: <strong class="text-amber-400">Cagayan de Oro City</strong></span>
                         <span class="inline-block w-1 h-1 rounded-full bg-slate-400 dark:bg-slate-600"></span>
                         <span id="sync-status" class="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Connecting to Sheets Proxy...
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Connecting to Google Sheets...
                         </span>
                     </p>
                 </div>
@@ -736,35 +735,27 @@
             }
         }
 
-        async function fetchWithTimeout(url, timeoutMs = 30000) {
-            const controller = new AbortController();
-            const id = setTimeout(() => controller.abort(), timeoutMs);
-            try {
-                const res = await fetch(url, { signal: controller.signal });
-                clearTimeout(id);
-                if (res && res.ok) {
-                    const text = await res.text();
-                    if (text && text.length > 10 && !text.includes('<!DOCTYPE html>')) return text;
-                }
-            } catch (e) { clearTimeout(id); }
-            return null;
-        }
-
         async function fetchSheetData() {
             const syncStatus = document.getElementById('sync-status');
-            if (syncStatus) syncStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Syncing Google Sheets...';
+            if (syncStatus) syncStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Syncing Google Sheets JSON...';
 
-            const corsProxy = 'https://corsproxy.io/?';
-            const getCsv = async (targetUrl) => {
-                let res = await fetchWithTimeout(targetUrl, 25000);
-                if (!res) res = await fetchWithTimeout(corsProxy + encodeURIComponent(targetUrl), 25000);
-                return res ? Papa.parse(res, { header: true, skipEmptyLines: true }).data || [] : [];
+            const getJson = async (endpoint) => {
+                try {
+                    const res = await fetch(endpoint);
+                    if (res.ok) {
+                        const parsed = await res.json();
+                        return Array.isArray(parsed) ? parsed : [];
+                    }
+                } catch(e) {
+                    console.error("Fetch Error:", e);
+                }
+                return [];
             };
 
             const [data1, data2, data3] = await Promise.all([
-                getCsv(SHEET_1_URL),
-                getCsv(SHEET_2_URL),
-                getCsv(SHEET_3_URL)
+                getJson('/api/sheet1'),
+                getJson('/api/sheet2'),
+                getJson('/api/sheet3')
             ]);
 
             document.getElementById('cnt-sheet1').innerText = data1.length.toLocaleString();
@@ -1457,7 +1448,6 @@
             alert('Click anywhere on the modal inspector map to set your target location.');
         }
 
-        /* USE CURRENT LOCATION FOR SERVICEABILITY CHECKER */
         function useCurrentLocationForServiceability() {
             if (!navigator.geolocation) {
                 alert('Geolocation is not supported by your browser.');
@@ -1572,7 +1562,6 @@
             });
             const targetMarker = L.marker([targetLat, targetLon], { icon: pinIcon, draggable: true, zIndexOffset: 1000 }).addTo(serviceabilityLayerGroup);
 
-            // Re-evaluate on drag drop
             targetMarker.on('dragend', function (event) {
                 const newPos = event.target.getLatLng();
                 document.getElementById('svc-coord-input').value = `${newPos.lat.toFixed(6)}, ${newPos.lng.toFixed(6)}`;
@@ -1711,7 +1700,7 @@
                 const woVal = !isNaN(parseNum(woLinesRaw)) ? parseNum(woLinesRaw) : 0;
                 const totalVal = !isNaN(parseNum(totalLinesRaw)) ? parseNum(totalLinesRaw) : 0;
 
-                // Top Overview Cards (per technology)
+                // Top Overview Cards
                 if (!techMap[techVal]) {
                     techMap[techVal] = { tech: techVal, recCount: 0, woLines: 0, totalLines: 0 };
                 }
@@ -1739,7 +1728,6 @@
                 groupMap[groupKey].totalLines += totalVal;
             });
 
-            // Summary Header Context
             const activeFilterNames = [];
             if (modalFilters.tech.size > 0) activeFilterNames.push(`${modalFilters.tech.size} Techs`);
             if (modalFilters.province.size > 0) activeFilterNames.push(`${modalFilters.province.size} Prov`);
@@ -1765,7 +1753,6 @@
             };
             if (colHeader) colHeader.innerText = columnNames[currentModalGroupBy] || 'Location Entity';
 
-            // Render Tech Overview Cards
             Object.keys(techMap).sort().forEach(tech => {
                 const item = techMap[tech];
                 const utilPct = item.totalLines > 0 ? ((item.woLines / item.totalLines) * 100).toFixed(1) : '0.0';
@@ -1785,7 +1772,6 @@
                 `;
             });
 
-            // Render Aggregation Matrix Rows
             const sortedGroupKeys = Object.keys(groupMap).sort();
             if (sortedGroupKeys.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-500">No records found matching current modal filters.</td></tr>`;
